@@ -44,3 +44,33 @@ async def upload_document(file: UploadFile = File(...), source = Depends(get_dat
     finally:
         if os.path.exists(file_path):
             os.remove(file_path)
+
+@router.get("/samples")
+def list_sample_documents():
+    sample_dir = "/sample_documents"
+    if not os.path.exists(sample_dir):
+        return {"samples": []}
+        
+    samples = []
+    for f in os.listdir(sample_dir):
+        if f.endswith(".pdf"):
+            samples.append(f)
+    return {"samples": sorted(samples)}
+
+@router.post("/samples/{filename}")
+def process_sample_document(filename: str, source = Depends(get_data_source)):
+    sample_dir = "/sample_documents"
+    file_path = os.path.join(sample_dir, filename)
+    
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Sample document not found.")
+        
+    try:
+        tender_id = process_upload(file_path, source)
+    except PdfExtractionError as e:
+        raise HTTPException(status_code=400, detail=f"Failed to extract document: {str(e)}")
+    except Exception as e:
+        print(f"Server Error during processing sample: {e}")
+        raise HTTPException(status_code=500, detail="An internal server error occurred while processing the document.")
+        
+    return {"message": "Sample document processed successfully", "tender_id": tender_id}

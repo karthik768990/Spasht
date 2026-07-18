@@ -1,26 +1,84 @@
-
 # Spasht
 
-A procurement transparency tool that surfaces vendor-concentration and
-eligibility-criteria red flags in public tender data — built for the
-"Inclusive Innovation for Bharat" GovTech track.
+## 1. The Problem We're Solving
 
-## Structure
+**Problem**: Government procurement data is published as a transparency gesture (GeM, state e-procurement portals, CPPP) but is never analyzed at scale. Statistical red flags obvious in aggregate — one vendor winning 90% of tenders in a district, eligibility criteria narrow enough to fit one company — stay invisible unless a journalist or RTI activist manually digs through records case by case.
 
-- `backend/` — FastAPI application
-  - `app/data/` — pluggable data sources (Postgres) + pure scoring functions
-  - `app/data/parser/` — document extraction (regex) + category matching (embeddings)
-  - `app/services/` — orchestration layer (build_report, parsing pipeline) — TO BUILD
-  - `app/routers/` — HTTP endpoints — TO BUILD
-  - `app/schemas/` — Pydantic response models — TO BUILD
-- `frontend/` — React application — TO BUILD
-- `db/` — schema.sql (run in NeonDB SQL editor) + seed_data.py
-- `sample_documents/` — simulated tender PDFs for Parser dev/testing, with ground_truth.md
-- `scripts/` — one-off dev utilities (e.g. sample document generator)
+**Amplify**: Government procurement is one of the largest channels of public spending in India, and one of the least algorithmically audited. Publishing data is not the same as making it legible. The OECD's 2025 Guidelines for Fighting Bid Rigging explicitly lists "same supplier repeatedly winning" and "geographic win allocation" as established red flags — this isn't a hypothetical problem, it's a documented one with no automated detection layer at the scale India operates at.
 
-## Setup
+**Impact**: Without this layer, honest vendors/MSMEs get locked out of competitive bidding when tenders are structured to favor incumbents; procurement officers and auditors rely on manual sampling instead of systemic monitoring; citizens have no visibility into how public money is actually being spent.
 
-1. Run `db/schema.sql` in your NeonDB SQL editor.
-2. `export DATABASE_URL="postgresql+psycopg2://..."`, then `python db/seed_data.py`
-3. `pip install -r backend/requirements.txt --break-system-packages`
-4. (once built) `uvicorn app.main:app --reload` from `backend/`
+**Need**: What's missing isn't more disclosure — it's an interpretation layer that converts raw, scattered, unstructured tender data into actionable, explainable signal, sitting beside existing systems rather than replacing them.
+
+**Payoff**: Spasht turns published tender data into two independently explainable red-flag signals per tender — a concentration score and an eligibility-criteria deviation score — so a procurement officer, auditor, or citizen can see not just *that* something looks unusual, but exactly *why*, with the evidence shown, not asserted.
+
+## 2. What Spasht Computes
+
+Spasht exposes TWO SEPARATE, never-blended scores per tender.
+
+1. **Concentration score (HHI)** — computed at both the department level and category level. 
+   - *Why two levels?* High department HHI alone suggests department-level favoritism. High category HHI alone could just mean a legitimate niche specialist. High on BOTH is the strongest, hardest-to-explain-away signal.
+2. **Eligibility-text deviation score** — measures how far a tender's eligibility criteria deviates from the norm for its category, using semantic similarity.
+
+**Important Context**: This is a flagging tool, not a verdict. As the OECD frames it, these indicators do not necessarily demonstrate the presence of corruption — they signal risk worth human review.
+
+## 3. Architecture
+
+Spasht uses a decoupled architecture consisting of a FastAPI backend, a React frontend, and a PostgreSQL database (NeonDB), interacting through a pluggable `TenderDataSource` abstraction.
+
+```text
+Upload PDF → Parser → Category Matcher → Data Source → Scoring → API → Frontend
+```
+
+- **Scalability**: The pluggable data-source interface means connecting a new procurement portal requires writing one new adapter implementing 6 methods, rather than redesigning the entire system. Aggregation happens directly in SQL, meaning query costs scale efficiently with the database engine, not with application server memory. The embedding function (`get_embeddings()`) is a single swappable seam — upgrading the semantic model never requires touching the core scoring logic that consumes it.
+- **Fault Tolerance**: Document extraction fails LOUDLY and explicitly. A missing critical field raises a clear error rather than silently inserting wrong data. This is deliberate because silent mis-extraction is worse than a visible failure in a governance tool. Database writes for a parsed document are strictly validated before insertion via parameterized queries (new department/vendor/category detection is explicit, not accidental).
+
+## 4. How Correctness is Verified
+
+Correctness is not asserted; it is rigorously tested. 
+
+The system is validated against a **synthetic dataset with documented, known ground truth**. We use synthetic data not because real data was unavailable, but because it lets every claim the system makes be checked against a known-correct answer (e.g., a group deliberately seeded so one vendor wins 85% of tenders should score HIGH concentration; a group with 6 vendors rotating evenly should score LOW).
+
+Our test pyramid is structured to prove this:
+- **Unit Tests**: Verify the pure mathematical scoring functions (HHI calculations handling exact numeric bounds and minimum-count gating, deviation scoring).
+- **Extraction Tests**: Verify our PDF parser against sample documents with a field-by-field ground truth file (`sample_documents/ground_truth.md`).
+- **Integration Tests**: Upload test documents and verify the resulting database side-effects and score changes are directionally correct.
+- **Security Tests**: Validate file-type/size limits on uploads and assert that SQL injection payloads are neutralized by parameterized queries.
+
+*What is and isn't proven*: The mathematical properties of HHI (bounded 0–10,000, monotonic in concentration) and of cosine similarity (bounded 0–1) are provable properties of the formulas themselves. Whether the system correctly flags real-world rigging is an empirical claim, validated here against seeded ground truth, not a mathematical proof.
+
+## 5. Development Setup
+
+Here is the exact command sequence to run the project locally.
+
+```bash
+# 1. Database
+# (run db/schema.sql in your PostgreSQL / NeonDB SQL editor first)
+export DATABASE_URL="postgresql+psycopg2://user:pass@host/dbname"
+python db/seed_data.py
+
+# 2. Backend
+cd backend
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+
+# 3. Frontend
+cd ../frontend
+npm install
+npm run dev
+
+# 4. Tests
+cd ../backend
+pytest tests/ -v
+
+# 5. Docker Compose (Alternative to manual setup)
+# (Ensure your backend/.env file contains the DATABASE_URL)
+docker compose up --build
+```
+
+## 6. Status
+
+This project is a hackathon submission under active development. 
+
+*Proven*: The core mathematical extraction, SQL aggregation scaling, and UI score separation work reliably and are thoroughly tested. 
+*Open Questions*: Real-world small-sample HHI threshold tuning and embedding model finalization remain documented open areas for future iteration.
