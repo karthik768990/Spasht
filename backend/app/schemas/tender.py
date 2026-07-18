@@ -17,3 +17,4 @@ class TenderReportResponse(BaseModel):
     eligibility_deviation_score: Optional[float]
     
     single_bidder_flag: bool
+    pattern_classification: str

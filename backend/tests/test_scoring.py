@@ -5,7 +5,8 @@ from app.data.scoring import (
     compute_hhi_from_win_counts,
     hhi_classification,
     compute_eligibility_scores,
-    compute_single_bidder_map
+    compute_single_bidder_map,
+    classify_pattern
 )
 
 def test_compute_hhi_from_win_counts_even_split():
@@ -93,3 +94,24 @@ def test_compute_single_bidder_map():
     assert res[2] is True
     assert res[3] is False
     assert res[4] is True
+
+def test_classify_pattern():
+    # Insufficient data
+    assert classify_pattern("INSUFFICIENT_DATA", "HIGH concentration", 0.5) == "Insufficient Data"
+    assert classify_pattern("low concentration", "INSUFFICIENT_DATA", 0.1) == "Insufficient Data"
+    
+    # Concentrated Pattern (High, High, High Deviation)
+    assert classify_pattern("HIGH concentration", "HIGH concentration", 0.5, deviation_threshold=0.4) == "Concentrated Pattern"
+    
+    # Usual Pattern (Low, Low, Low Deviation)
+    assert classify_pattern("low concentration", "low concentration", 0.2, deviation_threshold=0.4) == "Usual Pattern"
+    
+    # Mixed Signal
+    # High HHI but low deviation
+    assert classify_pattern("HIGH concentration", "HIGH concentration", 0.1, deviation_threshold=0.4) == "Mixed Signal"
+    # Low HHI but high deviation
+    assert classify_pattern("low concentration", "low concentration", 0.8, deviation_threshold=0.4) == "Mixed Signal"
+    # Moderate HHI
+    assert classify_pattern("moderate concentration", "low concentration", 0.2, deviation_threshold=0.4) == "Mixed Signal"
+    # Null deviation (e.g., category with 1 tender) but high HHIs
+    assert classify_pattern("HIGH concentration", "HIGH concentration", None) == "Mixed Signal"

@@ -29,7 +29,8 @@ def test_get_tenders_schema_no_risk_score(monkeypatch):
             "category_hhi": 100.0,
             "category_hhi_label": "low",
             "eligibility_deviation_score": 0.5,
-            "single_bidder_flag": False
+            "single_bidder_flag": False,
+            "pattern_classification": "Mixed Signal"
         }])
     
     monkeypatch.setattr("app.routers.tenders.build_report", mock_build_report)

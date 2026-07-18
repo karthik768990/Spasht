@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UploadCloud, AlertTriangle, FileText, Activity, Moon, Sun, ChevronDown } from 'lucide-react';
+import { UploadCloud, AlertTriangle, FileText, Activity, Moon, Sun, ChevronDown, Info } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
@@ -12,6 +12,7 @@ function App() {
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
   const [samples, setSamples] = useState([]);
   const [showSamples, setShowSamples] = useState(false);
+  const [showReasoning, setShowReasoning] = useState(false);
 
   useEffect(() => {
     if (theme === 'dark') {
@@ -75,7 +76,7 @@ function App() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || 'Upload failed');
-      alert(`Upload successful! Tender ID: ${data.tender_id}`);
+      alert(`Scan complete! Tender ID: ${data.tender_id}`);
       fetchTenders();
     } catch (err) {
       alert(`Error: ${err.message}`);
@@ -103,18 +104,39 @@ function App() {
     }
   };
 
+  const getBadgeColors = (pattern) => {
+    switch (pattern) {
+      case 'Concentrated Pattern':
+        return 'bg-rose-100 text-rose-900 border-rose-300 dark:bg-rose-900/40 dark:text-rose-300 dark:border-rose-700/50';
+      case 'Usual Pattern':
+        return 'bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700/50';
+      case 'Mixed Signal':
+        return 'bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-700/50';
+      default:
+        return 'bg-slate-200 text-slate-800 border-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600';
+    }
+  };
+
+  const getReasoningText = (t) => {
+    const dh = t.dept_hhi_label;
+    const ch = t.category_hhi_label;
+    const dev = t.eligibility_deviation_score;
+    const devStr = dev !== null ? (dev > 0.4 ? `high (${dev.toFixed(3)} > 0.4)` : `low (${dev.toFixed(3)} ≤ 0.4)`) : 'unavailable';
+    return `${t.pattern_classification}: Department concentration is ${dh} (${t.dept_hhi}), Category concentration is ${ch} (${t.category_hhi}), and semantic eligibility deviation is ${devStr}.`;
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-sans transition-colors duration-200">
-      <header className="bg-white dark:bg-slate-800 shadow-sm border-b border-slate-200 dark:border-slate-700 sticky top-0 z-10">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-sans transition-colors duration-200 motion-reduce:transition-none">
+      <header className="bg-white dark:bg-slate-800 shadow-sm border-b border-slate-300 dark:border-slate-700 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+          <div className="flex items-center gap-2 text-indigo-900 dark:text-indigo-300">
             <Activity size={24} />
-            <h1 className="text-xl font-bold tracking-tight">Spasht | Procurement Monitor</h1>
+            <h1 className="text-xl font-serif font-bold tracking-tight">Spasht | Civic Ledger</h1>
           </div>
           <div className="flex items-center gap-4">
             <button 
               onClick={toggleTheme} 
-              className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition"
+              className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 focus-visible:ring-2 focus-visible:ring-indigo-500 outline-none transition-colors"
               aria-label="Toggle Theme"
             >
               {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
@@ -124,18 +146,18 @@ function App() {
               <div className="relative">
                 <button 
                   onClick={() => setShowSamples(!showSamples)}
-                  className="bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-md shadow-sm text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-600 transition flex items-center gap-2"
+                  className="bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 px-4 py-2 rounded shadow-sm text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-600 focus-visible:ring-2 focus-visible:ring-indigo-500 outline-none transition-colors flex items-center gap-2"
                   disabled={uploading}
                 >
-                  Try a sample <ChevronDown size={16} />
+                  Load Sample <ChevronDown size={16} />
                 </button>
                 {showSamples && (
-                  <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md shadow-lg z-20 py-1">
+                  <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded shadow-lg z-20 py-1">
                     {samples.map(s => (
                       <button 
                         key={s}
                         onClick={() => handleSampleUpload(s)}
-                        className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-slate-700 truncate"
+                        className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-slate-700 focus-visible:bg-indigo-50 dark:focus-visible:bg-slate-700 outline-none truncate"
                         title={s}
                       >
                         {s}
@@ -146,62 +168,66 @@ function App() {
               </div>
             )}
             
-            <label className="cursor-pointer bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md shadow-sm text-sm font-medium transition flex items-center gap-2">
-              {uploading ? 'Processing...' : <><UploadCloud size={18} /> Upload Award PDF</>}
+            <label className="cursor-pointer bg-indigo-900 hover:bg-indigo-800 dark:bg-indigo-300 dark:hover:bg-indigo-400 dark:text-indigo-950 text-indigo-50 px-4 py-2 rounded shadow-sm text-sm font-medium focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500 transition-colors flex items-center gap-2">
+              {uploading ? 'Scanning...' : <><UploadCloud size={18} /> Scan Award Document</>}
               <input type="file" className="hidden" accept=".pdf" onChange={handleFileUpload} disabled={uploading} />
             </label>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-8 flex gap-6 items-start">
+      <main className="max-w-7xl mx-auto px-4 py-8 flex flex-col lg:flex-row gap-6 items-start">
         {/* Left Column: Dashboard List */}
-        <div className={`flex-1 flex flex-col gap-4 ${selectedTender ? 'hidden lg:flex lg:w-2/3' : 'w-full'}`}>
-          <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Recent Tender Awards</h2>
+        <div className={`flex-1 flex flex-col gap-4 ${selectedTender ? 'hidden lg:flex lg:w-3/5 xl:w-2/3' : 'w-full'}`}>
+          <h2 className="text-xl font-serif font-bold text-slate-800 dark:text-slate-200">Public Procurement Records</h2>
           
-          {error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 p-3 rounded-md border border-red-200 dark:border-red-800">{error}</div>}
+          {error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 p-4 rounded border border-red-200 dark:border-red-800">{error}</div>}
           
           {loading ? (
-            <div className="text-slate-500 dark:text-slate-400 animate-pulse">Loading data...</div>
+            <div className="flex flex-col gap-3 animate-pulse">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="h-16 bg-slate-200 dark:bg-slate-800 rounded w-full"></div>
+              ))}
+            </div>
           ) : (
-            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <div className="bg-white dark:bg-slate-800 rounded border border-slate-300 dark:border-slate-700 overflow-hidden shadow-sm">
               <table className="w-full text-left text-sm whitespace-nowrap">
-                <thead className="bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-700">
+                <thead className="bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 font-semibold border-b border-slate-300 dark:border-slate-700">
                   <tr>
-                    <th className="px-4 py-3">ID / Ref</th>
-                    <th className="px-4 py-3">Department & Category</th>
-                    <th className="px-4 py-3">Winner</th>
-                    <th className="px-4 py-3">Concentration (HHI)</th>
-                    <th className="px-4 py-3">Eligibility Dev.</th>
+                    <th className="px-4 py-3">Record ID</th>
+                    <th className="px-4 py-3">Context</th>
+                    <th className="px-4 py-3">Awarded Vendor</th>
+                    <th className="px-4 py-3">Analysis Pattern</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                   {tenders.map((t) => (
                     <tr 
                       key={t.tender_id} 
-                      onClick={() => setSelectedTender(t)}
-                      className={`cursor-pointer hover:bg-indigo-50 dark:hover:bg-slate-700/50 transition ${selectedTender?.tender_id === t.tender_id ? 'bg-indigo-50 dark:bg-slate-700' : ''}`}
+                      onClick={() => { setSelectedTender(t); setShowReasoning(false); }}
+                      className={`cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${selectedTender?.tender_id === t.tender_id ? 'bg-indigo-50 dark:bg-slate-700' : ''}`}
                     >
-                      <td className="px-4 py-3 font-medium text-indigo-600 dark:text-indigo-400">#{t.tender_id}</td>
+                      <td className="px-4 py-3 font-mono font-medium text-slate-600 dark:text-slate-400">#{t.tender_id}</td>
                       <td className="px-4 py-3">
-                        <div className="font-semibold text-slate-800 dark:text-slate-200">{t.department}</div>
+                        <div className="font-medium text-slate-900 dark:text-slate-100">{t.department}</div>
                         <div className="text-slate-500 dark:text-slate-400 text-xs">{t.category}</div>
                       </td>
-                      <td className="px-4 py-3 dark:text-slate-300">{t.winning_vendor || 'N/A'}</td>
+                      <td className="px-4 py-3 text-slate-800 dark:text-slate-200">{t.winning_vendor || 'N/A'}</td>
                       <td className="px-4 py-3">
-                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${t.category_hhi_label.includes('HIGH') ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400' : t.category_hhi_label.includes('INSUFFICIENT') ? 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300' : t.category_hhi_label.includes('moderate') ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400'}`}>
-                          {t.category_hhi_label}
+                        <span className={`px-2 py-1 rounded border text-xs font-semibold tracking-wide ${getBadgeColors(t.pattern_classification)}`}>
+                          {t.pattern_classification}
                         </span>
-                      </td>
-                      <td className="px-4 py-3 dark:text-slate-300">
-                        {t.eligibility_deviation_score !== null ? t.eligibility_deviation_score.toFixed(3) : 'N/A'}
                       </td>
                     </tr>
                   ))}
                   {tenders.length === 0 && (
                     <tr>
-                      <td colSpan="5" className="px-4 py-8 text-center text-slate-500 dark:text-slate-400">
-                        No tenders found. Upload a document or try a sample to get started.
+                      <td colSpan="4" className="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
+                        <div className="flex flex-col items-center gap-3">
+                          <FileText size={32} className="text-slate-300 dark:text-slate-600" />
+                          <p>No procurement records found.</p>
+                          <p className="text-xs">Scan an award document or load a sample to begin analysis.</p>
+                        </div>
                       </td>
                     </tr>
                   )}
@@ -211,85 +237,99 @@ function App() {
           )}
         </div>
 
-        {/* Right Column: Tender Details (Two-Score Transparency) */}
+        {/* Right Column: The Evidence Ledger */}
         {selectedTender && (
-          <div className="w-full lg:w-1/3 bg-white dark:bg-slate-800 rounded-lg shadow-md border border-slate-200 dark:border-slate-700 flex flex-col sticky top-24">
-            <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50 rounded-t-lg">
-              <h3 className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                <FileText size={18} className="text-indigo-600 dark:text-indigo-400"/>
-                Tender #{selectedTender.tender_id} Analysis
+          <div className="w-full lg:w-2/5 xl:w-1/3 bg-white dark:bg-slate-800 rounded border border-slate-300 dark:border-slate-700 flex flex-col sticky top-24 shadow-md">
+            <div className="p-4 border-b border-slate-300 dark:border-slate-700 flex justify-between items-center bg-slate-100 dark:bg-slate-900 rounded-t">
+              <h3 className="font-serif font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                Evidence Ledger: <span className="font-mono text-indigo-700 dark:text-indigo-400">#{selectedTender.tender_id}</span>
               </h3>
               <button 
                 onClick={() => setSelectedTender(null)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm font-semibold lg:hidden"
+                className="text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 text-sm font-semibold focus-visible:ring-2 focus-visible:ring-indigo-500 outline-none lg:hidden"
               >
                 Close
               </button>
             </div>
             
-            <div className="p-4 flex flex-col gap-6 overflow-y-auto max-h-[calc(100vh-140px)]">
-              <div>
-                <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Context</div>
-                <div className="text-lg font-bold text-slate-900 dark:text-slate-100">{selectedTender.department}</div>
-                <div className="text-sm font-medium text-slate-600 dark:text-slate-300">{selectedTender.category}</div>
-                <div className="mt-2 text-sm">
-                  <span className="text-slate-500 dark:text-slate-400">Awarded to:</span> <span className="font-semibold text-slate-800 dark:text-slate-200">{selectedTender.winning_vendor}</span>
+            <div className="p-5 flex flex-col gap-6 overflow-y-auto max-h-[calc(100vh-140px)]">
+              {/* Top classification banner */}
+              <div className="flex flex-col gap-3">
+                <div className="flex justify-between items-center">
+                  <span className={`px-3 py-1.5 rounded border text-sm font-bold tracking-wide ${getBadgeColors(selectedTender.pattern_classification)}`}>
+                    {selectedTender.pattern_classification}
+                  </span>
+                  <button 
+                    onClick={() => setShowReasoning(!showReasoning)}
+                    className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 focus-visible:ring-2 focus-visible:ring-indigo-500 outline-none rounded p-1 transition-colors"
+                    aria-label="Toggle Reasoning"
+                  >
+                    <Info size={18} />
+                  </button>
                 </div>
-                {selectedTender.single_bidder_flag && (
-                  <div className="mt-3 flex items-start gap-2 text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-2 rounded border border-amber-200 dark:border-amber-800/50 text-xs">
-                    <AlertTriangle size={14} className="mt-0.5 shrink-0"/>
-                    This tender received exactly 1 bid.
+
+                {showReasoning && (
+                  <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 p-3 rounded text-sm text-indigo-900 dark:text-indigo-200 leading-relaxed shadow-inner">
+                    <strong>Reasoning:</strong> {getReasoningText(selectedTender)}
                   </div>
                 )}
               </div>
 
-              {/* TRANSPARENCY REQUIREMENT: Strictly separated score displays */}
-              <div className="space-y-4">
-                <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Independent Risk Signals</div>
-                
-                {/* Score 1: Concentration (HHI) */}
-                <div className="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 shadow-sm">
-                  <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-bold text-slate-800 dark:text-slate-200">Vendor Concentration</h4>
-                    <span className={`px-2 py-0.5 rounded text-xs font-bold ${selectedTender.category_hhi_label.includes('HIGH') ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400' : selectedTender.category_hhi_label.includes('INSUFFICIENT') ? 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300' : selectedTender.category_hhi_label.includes('moderate') ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400'}`}>
-                      {selectedTender.category_hhi_label}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
-                    Herfindahl-Hirschman Index (HHI) measures structural monopoly risk across historical wins.
-                  </p>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-600 dark:text-slate-400">Category HHI:</span>
-                    <span className="font-mono font-semibold dark:text-slate-200">{selectedTender.category_hhi}</span>
-                  </div>
-                  <div className="flex justify-between text-sm mt-1">
-                    <span className="text-slate-600 dark:text-slate-400">Department HHI:</span>
-                    <span className="font-mono font-semibold dark:text-slate-200">{selectedTender.dept_hhi}</span>
-                  </div>
+              {/* Context */}
+              <div className="border-l-2 border-slate-300 dark:border-slate-600 pl-3">
+                <div className="text-sm font-medium text-slate-600 dark:text-slate-400 uppercase tracking-widest mb-1">Context</div>
+                <div className="text-base font-bold text-slate-900 dark:text-slate-100">{selectedTender.department}</div>
+                <div className="text-sm text-slate-700 dark:text-slate-300">{selectedTender.category}</div>
+                <div className="mt-2 text-sm">
+                  <span className="text-slate-500 dark:text-slate-400">Awarded to:</span> <span className="font-semibold text-slate-900 dark:text-slate-100">{selectedTender.winning_vendor}</span>
                 </div>
+              </div>
 
-                {/* Score 2: Eligibility Text Deviation */}
-                <div className="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 shadow-sm">
-                  <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-bold text-slate-800 dark:text-slate-200">Eligibility Criteria Deviation</h4>
-                    {selectedTender.eligibility_deviation_score !== null ? (
-                      <span className={`px-2 py-0.5 rounded text-xs font-bold ${selectedTender.eligibility_deviation_score > 0.4 ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400'}`}>
-                        {selectedTender.eligibility_deviation_score.toFixed(3)}
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded text-xs font-bold bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300">N/A</span>
-                    )}
+              {selectedTender.single_bidder_flag && (
+                <div className="flex items-start gap-2 text-amber-900 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 p-3 rounded border border-amber-200 dark:border-amber-800 text-sm shadow-sm">
+                  <AlertTriangle size={16} className="mt-0.5 shrink-0"/>
+                  <span>This tender received <strong>exactly 1 bid</strong>.</span>
+                </div>
+              )}
+
+              {/* TRANSPARENCY REQUIREMENT: Strictly separated score displays side-by-side or stacked cleanly */}
+              <div className="flex flex-col gap-4">
+                <div className="text-sm font-medium text-slate-600 dark:text-slate-400 uppercase tracking-widest border-b border-slate-200 dark:border-slate-700 pb-1">Raw Evidence</div>
+                
+                <div className="flex flex-col sm:flex-row gap-4">
+                  {/* Score 1: Concentration (HHI) */}
+                  <div className="flex-1 p-3 rounded border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/50 shadow-sm">
+                    <h4 className="font-bold text-slate-900 dark:text-slate-100 mb-2 text-sm">Concentration (HHI)</h4>
+                    <div className="flex justify-between items-baseline mb-1">
+                      <span className="text-xs text-slate-600 dark:text-slate-400">Category:</span>
+                      <span className="font-mono font-bold text-slate-900 dark:text-slate-100 text-base">{selectedTender.category_hhi}</span>
+                    </div>
+                    <div className="flex justify-between items-baseline">
+                      <span className="text-xs text-slate-600 dark:text-slate-400">Dept:</span>
+                      <span className="font-mono font-bold text-slate-900 dark:text-slate-100 text-base">{selectedTender.dept_hhi}</span>
+                    </div>
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Semantic deviation (SBERT) from this category's baseline requirements. Higher scores indicate unusually narrow/restrictive criteria.
-                    {selectedTender.eligibility_deviation_score === null && " (Insufficient peer tenders to compare against)."}
-                  </p>
+
+                  {/* Score 2: Eligibility Text Deviation */}
+                  <div className="flex-1 p-3 rounded border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/50 shadow-sm flex flex-col">
+                    <h4 className="font-bold text-slate-900 dark:text-slate-100 mb-2 text-sm">Deviation Score</h4>
+                    <div className="flex justify-between items-baseline flex-1">
+                      <span className="text-xs text-slate-600 dark:text-slate-400">Semantic:</span>
+                      {selectedTender.eligibility_deviation_score !== null ? (
+                        <span className="font-mono font-bold text-slate-900 dark:text-slate-100 text-base">
+                          {selectedTender.eligibility_deviation_score.toFixed(3)}
+                        </span>
+                      ) : (
+                        <span className="font-mono font-bold text-slate-500 dark:text-slate-500 text-base">N/A</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
               
-              <div className="pt-2">
-                <p className="text-xs text-slate-400 dark:text-slate-500 italic text-center">
-                  Notice: These signals are for investigative prioritization only and do not constitute proof of wrongdoing.
+              <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                  <strong>Notice:</strong> These signals are derived strictly from computational comparisons and are for investigative prioritization only. They do not constitute proof of wrongdoing.
                 </p>
               </div>
 

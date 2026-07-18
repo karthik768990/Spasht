@@ -81,3 +81,31 @@ def compute_eligibility_scores(eligibility_df: pd.DataFrame) -> pd.DataFrame:
 
 def compute_single_bidder_map(tender_ids: set, all_tender_ids: list) -> dict:
     return {tid: (tid in tender_ids) for tid in all_tender_ids}
+
+def classify_pattern(
+    dept_hhi_label: str,
+    category_hhi_label: str,
+    eligibility_deviation: float | None,
+    deviation_threshold: float = 0.4
+) -> str:
+    """
+    Computes a plain-language pattern classification based on the existing raw scores.
+    """
+    if "INSUFFICIENT" in dept_hhi_label.upper() or "INSUFFICIENT" in category_hhi_label.upper():
+        return "Insufficient Data"
+        
+    is_dept_high = "HIGH" in dept_hhi_label.upper()
+    is_cat_high = "HIGH" in category_hhi_label.upper()
+    is_dev_high = eligibility_deviation is not None and eligibility_deviation > deviation_threshold
+    
+    is_dept_low = "LOW" in dept_hhi_label.upper()
+    is_cat_low = "LOW" in category_hhi_label.upper()
+    is_dev_low = eligibility_deviation is not None and eligibility_deviation <= deviation_threshold
+
+    if is_dept_high and is_cat_high and is_dev_high:
+        return "Concentrated Pattern"
+    
+    if is_dept_low and is_cat_low and is_dev_low:
+        return "Usual Pattern"
+        
+    return "Mixed Signal"

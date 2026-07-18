@@ -5,6 +5,7 @@ from ..data.scoring import (
     compute_eligibility_scores,
     compute_single_bidder_map,
     hhi_classification,
+    classify_pattern,
 )
 
 
@@ -36,20 +37,24 @@ def build_report(source: TenderDataSource) -> pd.DataFrame:
         ch = cat_stat["hhi"]
         cc = cat_stat["count"]
         
+        dh_label = hhi_classification(dh, dc)
+        ch_label = hhi_classification(ch, cc)
+        elig_score = (
+            round(t["eligibility_deviation_score"], 4)
+            if pd.notna(t["eligibility_deviation_score"]) else None
+        )
+        
         rows.append(dict(
             tender_id=t["tender_id"],
             department=t["department"],
             category=t["category"],
             winning_vendor=t["winning_vendor"],
             dept_hhi=round(dh, 2) if dc > 0 else 0.0,
-            dept_hhi_label=hhi_classification(dh, dc),
+            dept_hhi_label=dh_label,
             category_hhi=round(ch, 2) if cc > 0 else 0.0,
-            category_hhi_label=hhi_classification(ch, cc),
+            category_hhi_label=ch_label,
             single_bidder_flag=single_bidder_map.get(t["tender_id"], False),
-            eligibility_deviation_score=(
-                round(t["eligibility_deviation_score"], 4)
-                if t["eligibility_deviation_score"] is not None else None
-            ),
+            eligibility_deviation_score=elig_score,
+            pattern_classification=classify_pattern(dh_label, ch_label, elig_score)
         ))
     return pd.DataFrame(rows)
-
