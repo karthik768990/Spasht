@@ -96,16 +96,19 @@ def classify_pattern(
         
     is_dept_high = "HIGH" in dept_hhi_label.upper()
     is_cat_high = "HIGH" in category_hhi_label.upper()
-    is_dev_high = eligibility_deviation is not None and eligibility_deviation > deviation_threshold
+    concentration_high = is_dept_high or is_cat_high
     
-    is_dept_low = "LOW" in dept_hhi_label.upper()
-    is_cat_low = "LOW" in category_hhi_label.upper()
-    is_dev_low = eligibility_deviation is not None and eligibility_deviation <= deviation_threshold
+    is_dept_mod = "MODERATE" in dept_hhi_label.upper()
+    is_cat_mod = "MODERATE" in category_hhi_label.upper()
+    concentration_moderate = (not concentration_high) and (is_dept_mod or is_cat_mod)
+    
+    eligibility_high = eligibility_deviation is not None and eligibility_deviation > deviation_threshold
 
-    if is_dept_high and is_cat_high and is_dev_high:
-        return "Concentrated Pattern"
-    
-    if is_dept_low and is_cat_low and is_dev_low:
+    if concentration_high and eligibility_high:
+        return "Concentrated Pattern — Strong Signal"
+    elif concentration_high or eligibility_high:
+        return "Concentrated Pattern — Partial Signal"
+    elif concentration_moderate:
+        return "Moderate Pattern"
+    else:
         return "Usual Pattern"
-        
-    return "Mixed Signal"

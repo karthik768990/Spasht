@@ -105,15 +105,15 @@ function App() {
   };
 
   const getBadgeColors = (pattern) => {
-    switch (pattern) {
-      case 'Concentrated Pattern':
-        return 'bg-rose-100 text-rose-900 border-rose-300 dark:bg-rose-900/40 dark:text-rose-300 dark:border-rose-700/50';
-      case 'Usual Pattern':
-        return 'bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700/50';
-      case 'Mixed Signal':
-        return 'bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-700/50';
-      default:
-        return 'bg-slate-200 text-slate-800 border-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600';
+    if (!pattern) return 'bg-slate-200 text-slate-800 border-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600';
+    if (pattern.includes('Strong Signal')) {
+      return 'bg-rose-100 text-rose-900 border-rose-300 dark:bg-rose-900/40 dark:text-rose-300 dark:border-rose-700/50';
+    } else if (pattern.includes('Partial Signal') || pattern === 'Moderate Pattern') {
+      return 'bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-700/50';
+    } else if (pattern === 'Usual Pattern') {
+      return 'bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700/50';
+    } else {
+      return 'bg-slate-200 text-slate-800 border-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600';
     }
   };
 

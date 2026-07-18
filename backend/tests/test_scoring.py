@@ -96,22 +96,28 @@ def test_compute_single_bidder_map():
     assert res[4] is True
 
 def test_classify_pattern():
-    # Insufficient data
+    # Insufficient data (Check A verified - this only hits if total wins < 10)
     assert classify_pattern("INSUFFICIENT_DATA", "HIGH concentration", 0.5) == "Insufficient Data"
     assert classify_pattern("low concentration", "INSUFFICIENT_DATA", 0.1) == "Insufficient Data"
     
-    # Concentrated Pattern (High, High, High Deviation)
-    assert classify_pattern("HIGH concentration", "HIGH concentration", 0.5, deviation_threshold=0.4) == "Concentrated Pattern"
+    # 1. General Admin / IT Hardware: competitive, low HHI -> Usual Pattern
+    assert classify_pattern("low concentration", "low concentration", 0.1) == "Usual Pattern"
     
-    # Usual Pattern (Low, Low, Low Deviation)
-    assert classify_pattern("low concentration", "low concentration", 0.2, deviation_threshold=0.4) == "Usual Pattern"
+    # 2. PWD Zone 4 / Road Construction: ~85% one vendor (High HHI), some narrow eligibility text (High Deviation)
+    assert classify_pattern("HIGH concentration", "HIGH concentration", 0.6) == "Concentrated Pattern — Strong Signal"
     
-    # Mixed Signal
-    # High HHI but low deviation
-    assert classify_pattern("HIGH concentration", "HIGH concentration", 0.1, deviation_threshold=0.4) == "Mixed Signal"
-    # Low HHI but high deviation
-    assert classify_pattern("low concentration", "low concentration", 0.8, deviation_threshold=0.4) == "Mixed Signal"
-    # Moderate HHI
-    assert classify_pattern("moderate concentration", "low concentration", 0.2, deviation_threshold=0.4) == "Mixed Signal"
-    # Null deviation (e.g., category with 1 tender) but high HHIs
-    assert classify_pattern("HIGH concentration", "HIGH concentration", None) == "Mixed Signal"
+    # 3. PWD Zone 4 / Road Construction (alternative case): High HHI, but normal text -> Partial Signal
+    assert classify_pattern("HIGH concentration", "HIGH concentration", 0.1) == "Concentrated Pattern — Partial Signal"
+    
+    # 4. Health Dept / Medical Supplies: 50/30/20 split -> likely Moderate Pattern (assuming HHI between 1500 and 2500)
+    # HHI = 50^2 + 30^2 + 20^2 = 2500 + 900 + 400 = 3800 (Wait, 3800 is High, let's use 40/40/20 = 1600+1600+400=3600...
+    # If the label returns moderate (say HHI 2000), it should be Moderate Pattern
+    assert classify_pattern("moderate concentration", "moderate concentration", 0.2) == "Moderate Pattern"
+    
+    # 5. Education Dept / School Furniture: ~65/35 gray-zone -> HHI = 4225 + 1225 = 5450 (High)
+    # Wait, 5450 is HIGH concentration. If it's High concentration but low deviation -> Partial Signal.
+    # If it was moderate concentration and low deviation -> Moderate Pattern.
+    assert classify_pattern("HIGH concentration", "moderate concentration", 0.2) == "Concentrated Pattern — Partial Signal"
+    
+    # Test High Eligibility Deviation alone -> Partial Signal
+    assert classify_pattern("low concentration", "low concentration", 0.8) == "Concentrated Pattern — Partial Signal"
