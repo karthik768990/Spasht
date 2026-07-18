@@ -7,7 +7,8 @@ consumes the plain pandas structures these methods return.
 
 from abc import ABC, abstractmethod
 import pandas as pd
-
+from  typing import List,Any,Dict
+from datetime import date
 
 class TenderDataSource(ABC):
 
@@ -42,3 +43,30 @@ class TenderDataSource(ABC):
         by the category matcher (Job B) to decide whether a newly parsed
         document's category is an existing one or genuinely new."""
         ...
+
+    # =========================================================================
+    # WRITE METHODS
+    # =========================================================================
+
+    @abstractmethod
+    def get_or_create_department(self, name: str, region: str) -> int:
+        """Returns the department_id, creating it if it doesn't exist."""
+        pass
+
+    @abstractmethod
+    def get_or_create_vendor(self, name: str) -> int:
+        """Returns the vendor_id, creating it if it doesn't exist."""
+        pass
+    
+    @abstractmethod
+    def insert_tender(self, department_id: int, category: str, region: str, eligibility_text: str, estimated_value: float, award_value: float, published_date: date, award_date: date) -> int:
+        """Inserts a new tender and returns its tender_id."""
+        pass
+
+    @abstractmethod
+    def insert_bids(self, tender_id: int, bids: List[Dict[str, Any]]) -> None:
+        """
+        Inserts bids for a given tender. 
+        `bids` format: [{'vendor_id': int, 'bid_amount': float, 'is_winner': bool}]
+        """
+        pass

@@ -5,25 +5,32 @@ Pure scoring functions — argument-only, no DB knowledge, no rounding
 
 import numpy as np
 import pandas as pd
-from sklearn.feature_extraction.text import TfidfVectorizer
+from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
 
 def compute_hhi_from_win_counts(win_counts: pd.DataFrame, group_col: str) -> dict:
     """
     win_counts: DataFrame with columns [group_col, 'vendor_id', 'win_count'].
-    Returns full-precision HHI per group value (0-10000 scale).
+    Returns dict: group_value -> {'hhi': float, 'count': int}
     """
-    hhi_by_group = {}
+    stats_by_group = {}
     for group_value, group_df in win_counts.groupby(group_col):
-        total_wins = group_df["win_count"].sum()
+        total_wins = int(group_df["win_count"].sum())
+        if total_wins == 0:
+            continue
         shares_pct = (group_df["win_count"] / total_wins) * 100
-        hhi_by_group[group_value] = float((shares_pct ** 2).sum())
-    return hhi_by_group
+        stats_by_group[group_value] = {
+            "hhi": float((shares_pct ** 2).sum()),
+            "count": total_wins
+        }
+    return stats_by_group
 
 
-def hhi_classification(hhi: float) -> str:
-    """DOJ-style thresholds: <1500 low, 1500-2500 moderate, >2500 high."""
+def hhi_classification(hhi: float, tender_count: int) -> str:
+    """DOJ-style thresholds with minimum-count gate for statistical validity."""
+    if tender_count < 10:
+        return "INSUFFICIENT_DATA"
     if hhi < 1500:
         return "low concentration"
     elif hhi <= 2500:
@@ -32,15 +39,17 @@ def hhi_classification(hhi: float) -> str:
         return "HIGH concentration"
 
 
+_model = None
+
 def get_embeddings(texts: list[str]) -> np.ndarray:
     """
-    PLUGGABLE embedding function — TF-IDF placeholder for now.
-    Swap the body for sentence-transformers/SBERT once decided; nothing
-    downstream (compute_eligibility_scores, category_matcher) needs to change,
-    since both only call this function and do cosine similarity on the result.
+    PLUGGABLE embedding function — swapped to sentence-transformers/SBERT.
+    Uses all-MiniLM-L6-v2.
     """
-    vectorizer = TfidfVectorizer(stop_words="english")
-    return vectorizer.fit_transform(texts).toarray()
+    global _model
+    if _model is None:
+        _model = SentenceTransformer("all-MiniLM-L6-v2")
+    return _model.encode(texts)
 
 
 def compute_eligibility_scores(eligibility_df: pd.DataFrame) -> pd.DataFrame:
