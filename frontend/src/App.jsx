@@ -1,7 +1,36 @@
 import React, { useState, useEffect } from 'react';
-import { UploadCloud, AlertTriangle, FileText, Activity, Moon, Sun, ChevronDown, Info } from 'lucide-react';
+import { UploadCloud, AlertTriangle, FileText, Activity, Moon, Sun, ChevronDown, Info, CheckCircle2, AlertCircle, TrendingUp, AlertOctagon, MinusCircle } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+
+const PatternBadge = ({ pattern, className = '' }) => {
+  let colors = '';
+  let Icon = null;
+  
+  if (!pattern || pattern === 'Insufficient Data') {
+    colors = 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700';
+    Icon = MinusCircle;
+  } else if (pattern.includes('Strong Signal')) {
+    colors = 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900/50';
+    Icon = AlertOctagon;
+  } else if (pattern.includes('Partial Signal')) {
+    colors = 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-400 dark:border-orange-900/50';
+    Icon = TrendingUp;
+  } else if (pattern === 'Moderate Pattern') {
+    colors = 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900/50';
+    Icon = AlertCircle;
+  } else if (pattern === 'Usual Pattern') {
+    colors = 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900/50';
+    Icon = CheckCircle2;
+  }
+
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded border text-xs font-semibold tracking-wide ${colors} ${className}`}>
+      {Icon && <Icon size={14} className="shrink-0" />}
+      {pattern || 'Insufficient Data'}
+    </span>
+  );
+};
 
 function App() {
   const [tenders, setTenders] = useState([]);
@@ -104,19 +133,6 @@ function App() {
     }
   };
 
-  const getBadgeColors = (pattern) => {
-    if (!pattern) return 'bg-slate-200 text-slate-800 border-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600';
-    if (pattern.includes('Strong Signal')) {
-      return 'bg-rose-100 text-rose-900 border-rose-300 dark:bg-rose-900/40 dark:text-rose-300 dark:border-rose-700/50';
-    } else if (pattern.includes('Partial Signal') || pattern === 'Moderate Pattern') {
-      return 'bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-700/50';
-    } else if (pattern === 'Usual Pattern') {
-      return 'bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700/50';
-    } else {
-      return 'bg-slate-200 text-slate-800 border-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600';
-    }
-  };
-
   const getReasoningText = (t) => {
     const dh = t.dept_hhi_label;
     const ch = t.category_hhi_label;
@@ -214,9 +230,7 @@ function App() {
                       </td>
                       <td className="px-4 py-3 text-slate-800 dark:text-slate-200">{t.winning_vendor || 'N/A'}</td>
                       <td className="px-4 py-3">
-                        <span className={`px-2 py-1 rounded border text-xs font-semibold tracking-wide ${getBadgeColors(t.pattern_classification)}`}>
-                          {t.pattern_classification}
-                        </span>
+                        <PatternBadge pattern={t.pattern_classification} />
                       </td>
                     </tr>
                   ))}
@@ -256,9 +270,7 @@ function App() {
               {/* Top classification banner */}
               <div className="flex flex-col gap-3">
                 <div className="flex justify-between items-center">
-                  <span className={`px-3 py-1.5 rounded border text-sm font-bold tracking-wide ${getBadgeColors(selectedTender.pattern_classification)}`}>
-                    {selectedTender.pattern_classification}
-                  </span>
+                  <PatternBadge pattern={selectedTender.pattern_classification} className="text-sm py-1.5 px-3" />
                   <button 
                     onClick={() => setShowReasoning(!showReasoning)}
                     className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 focus-visible:ring-2 focus-visible:ring-indigo-500 outline-none rounded p-1 transition-colors"
