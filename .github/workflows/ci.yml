@@ -45,7 +45,8 @@ jobs:
         run: pip-audit || echo "Audit found vulnerabilities but allowing pipeline to proceed for now"
         
       - name: Docker Build Check
-        run: docker build -t spasht-backend:test .
+        working-directory: .
+        run: docker build -t spasht-backend:test -f backend/Dockerfile .
 
       
   frontend-ci:
