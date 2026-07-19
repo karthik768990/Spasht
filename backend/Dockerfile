@@ -6,11 +6,14 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y libpq-dev gcc && rm -rf /var/lib/apt/lists/*
 
 # Install python dependencies
-COPY requirements.txt .
+COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
-COPY . /app
+COPY backend/ /app/
+
+# Copy sample documents to root so absolute paths in code still work
+COPY sample_documents/ /sample_documents/
 
 # Expose port
 EXPOSE 8000
