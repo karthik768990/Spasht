@@ -37,7 +37,7 @@ jobs:
         run: black --check . || echo "Black found issues but allowing pipeline to proceed during initial adoption"
         
       - name: Run Tests
-        run: pytest tests/ -v
+        run: pytest 
         
       - name: Security Audit (pip-audit)
         run: pip-audit || echo "Audit found vulnerabilities but allowing pipeline to proceed for now"
@@ -45,6 +45,7 @@ jobs:
       - name: Docker Build Check
         run: docker build -t spasht-backend:test .
 
+      
   frontend-ci:
     name: Frontend CI
     runs-on: ubuntu-latest
