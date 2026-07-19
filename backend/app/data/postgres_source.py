@@ -14,9 +14,15 @@ from .base import TenderDataSource
 
 class PostgresTenderDataSource(TenderDataSource):
     def __init__(self, database_url: str, timeout: int = 30):
+        connect_args = {}
+        if database_url.startswith("postgresql"):
+            connect_args["connect_timeout"] = timeout
+        elif database_url.startswith("sqlite"):
+            connect_args["timeout"] = timeout
+
         self.engine = create_engine(
             database_url,
-            connect_args={"connect_timeout": timeout}
+            connect_args=connect_args
         )
         
         # Enforce statement timeout at connection level

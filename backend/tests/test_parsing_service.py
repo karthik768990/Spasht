@@ -10,8 +10,8 @@ SAMPLE_DOCS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "sample_do
 @pytest.fixture
 def db_source():
     db_url = os.environ.get("DATABASE_URL")
-    if not db_url:
-        pytest.skip("DATABASE_URL not set; skipping integration tests.")
+    if not db_url or db_url.startswith("sqlite"):
+        pytest.skip("DATABASE_URL is not set or uses SQLite; skipping integration tests.")
     return PostgresTenderDataSource(db_url)
 
 def test_integration_upload_new_department(db_source):
