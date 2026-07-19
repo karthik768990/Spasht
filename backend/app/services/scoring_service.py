@@ -1,3 +1,9 @@
+"""
+scoring_service.py — Orchestrates the assembly of the final analysis report.
+Fetches pre-aggregated data from the provided TenderDataSource, applies pure
+scoring functions from data/scoring.py, and merges the results into a final Pandas DataFrame.
+"""
+
 from ..data.base import TenderDataSource
 import pandas as pd
 from ..data.scoring import (
@@ -28,33 +34,33 @@ def build_report(source: TenderDataSource) -> pd.DataFrame:
     )
 
     rows = []
-    for _, t in merged.iterrows():
-        dept_stat = dept_hhi.get(t["department"], {"hhi": 0.0, "count": 0})
-        cat_stat = cat_hhi.get(t["category"], {"hhi": 0.0, "count": 0})
+    for _, tender_row in merged.iterrows():
+        dept_stat = dept_hhi.get(tender_row["department"], {"hhi": 0.0, "count": 0})
+        cat_stat = cat_hhi.get(tender_row["category"], {"hhi": 0.0, "count": 0})
         
-        dh = dept_stat["hhi"]
-        dc = dept_stat["count"]
-        ch = cat_stat["hhi"]
-        cc = cat_stat["count"]
+        dept_hhi_val = dept_stat["hhi"]
+        dept_count = dept_stat["count"]
+        cat_hhi_val = cat_stat["hhi"]
+        cat_count = cat_stat["count"]
         
-        dh_label = hhi_classification(dh, dc)
-        ch_label = hhi_classification(ch, cc)
+        dept_hhi_label = hhi_classification(dept_hhi_val, dept_count)
+        cat_hhi_label = hhi_classification(cat_hhi_val, cat_count)
         elig_score = (
-            round(t["eligibility_deviation_score"], 4)
-            if pd.notna(t["eligibility_deviation_score"]) else None
+            round(tender_row["eligibility_deviation_score"], 4)
+            if pd.notna(tender_row["eligibility_deviation_score"]) else None
         )
         
         rows.append(dict(
-            tender_id=t["tender_id"],
-            department=t["department"],
-            category=t["category"],
-            winning_vendor=t["winning_vendor"],
-            dept_hhi=round(dh, 2) if dc > 0 else 0.0,
-            dept_hhi_label=dh_label,
-            category_hhi=round(ch, 2) if cc > 0 else 0.0,
-            category_hhi_label=ch_label,
-            single_bidder_flag=single_bidder_map.get(t["tender_id"], False),
+            tender_id=tender_row["tender_id"],
+            department=tender_row["department"],
+            category=tender_row["category"],
+            winning_vendor=tender_row["winning_vendor"],
+            dept_hhi=round(dept_hhi_val, 2) if dept_count > 0 else 0.0,
+            dept_hhi_label=dept_hhi_label,
+            category_hhi=round(cat_hhi_val, 2) if cat_count > 0 else 0.0,
+            category_hhi_label=cat_hhi_label,
+            single_bidder_flag=single_bidder_map.get(tender_row["tender_id"], False),
             eligibility_deviation_score=elig_score,
-            pattern_classification=classify_pattern(dh_label, ch_label, elig_score)
+            pattern_classification=classify_pattern(dept_hhi_label, cat_hhi_label, elig_score)
         ))
     return pd.DataFrame(rows)

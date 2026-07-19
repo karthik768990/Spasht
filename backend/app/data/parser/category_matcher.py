@@ -6,22 +6,7 @@ category in the system, or represents a genuinely new one.
 Deliberately reuses get_embeddings() from data/scoring.py rather than
 building a second, parallel similarity pipeline — same embedding function
 that scores eligibility-text deviation is used here, satisfying the
-"reuse modules, don't recreate them" rule. If you swap TF-IDF for
-sentence-transformers/SBERT later, both this module and eligibility
-scoring upgrade together automatically.
-
-IMPORTANT LIMITATION (be aware of this, don't just trust it blindly):
-TF-IDF is a bag-of-words method with no shared vocabulary awareness across
-short phrases. Two category names sharing zero words ("Road Construction"
-vs "Highway & Roadworks") will score LOW similarity even though a human
-reader would consider them the same category — TF-IDF has no notion that
-"Road" and "Highway" are related concepts. This is a much bigger practical
-problem for Job B (matching short 2-4 word category names) than it is for
-eligibility-text deviation (matching full sentences, where more shared
-vocabulary naturally exists). Test this yourself against realistic
-category-name variants before trusting it — if it's too unreliable at this
-scale, that's a real reason to prioritize the SBERT swap for THIS module
-specifically, even before upgrading eligibility scoring.
+"reuse modules, don't recreate them" rule.
 """
 
 from ..scoring import get_embeddings
@@ -45,6 +30,14 @@ def match_category(
     No side effects, no DB access — pure function, same principle as the
     scoring functions: takes exactly the arguments it needs and nothing else.
     """
+    if not extracted_category or not extracted_category.strip():
+        # Empty or malformed category fails gracefully rather than hitting the embedder
+        return {
+            "matched_category": "Unknown Category",
+            "similarity_score": 0.0,
+            "is_new_category": True,
+        }
+
     if not canonical_categories:
         # No existing categories to compare against — necessarily new.
         return {

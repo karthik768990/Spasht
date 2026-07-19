@@ -134,14 +134,26 @@ def parse_tender_document(pdf_path: str) -> dict:
     this feeds a governance tool where silent mis-extraction is worse than a
     visible failure.
     """
-    with pdfplumber.open(pdf_path) as pdf:
-        full_text = ""
-        all_tables = []
-        for page in pdf.pages:
-            page_text = page.extract_text()
-            if page_text:
-                full_text += page_text + "\n"
-            all_tables.extend(page.extract_tables())
+    try:
+        with pdfplumber.open(pdf_path) as pdf:
+            if len(pdf.pages) > 50:
+                raise PdfExtractionError("Document exceeds maximum allowed length of 50 pages.")
+                
+            full_text = ""
+            all_tables = []
+            for page in pdf.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    full_text += page_text + "\n"
+                all_tables.extend(page.extract_tables())
+                
+                # Defend against text-bomb PDFs
+                if len(full_text) > 1_000_000:
+                    raise PdfExtractionError("Document exceeds maximum allowed text length.")
+    except Exception as e:
+        if isinstance(e, PdfExtractionError):
+            raise
+        raise PdfExtractionError(f"File could not be parsed as a valid PDF document. Underlying error: {str(e)}")
 
     fields = _extract_labeled_fields(full_text)
     fields["eligibility_text"] = _extract_eligibility_text(full_text)

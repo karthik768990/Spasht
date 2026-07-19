@@ -49,8 +49,15 @@ def get_embeddings(texts: list[str]) -> np.ndarray:
     """
     global _model
     if _model is None:
-        _model = SentenceTransformer("all-MiniLM-L6-v2")
-    return _model.encode(texts)
+        try:
+            _model = SentenceTransformer("all-MiniLM-L6-v2")
+        except Exception as e:
+            raise RuntimeError(f"Failed to load embedding model: {e}")
+            
+    try:
+        return _model.encode(texts)
+    except Exception as e:
+        raise RuntimeError(f"Failed to compute embeddings: {e}")
 
 
 def compute_eligibility_scores(eligibility_df: pd.DataFrame) -> pd.DataFrame:
@@ -70,9 +77,9 @@ def compute_eligibility_scores(eligibility_df: pd.DataFrame) -> pd.DataFrame:
             deviation_scores.append(None)
             continue
 
-        this_vec = embeddings[idx].reshape(1, -1)
+        current_embedding = embeddings[idx].reshape(1, -1)
         category_baseline = embeddings[same_category_idx].mean(axis=0).reshape(1, -1)
-        sim = cosine_similarity(this_vec, category_baseline)[0][0]
+        sim = cosine_similarity(current_embedding, category_baseline)[0][0]
         deviation_scores.append(float(1 - sim))
 
     eligibility_df["eligibility_deviation_score"] = deviation_scores
@@ -80,7 +87,7 @@ def compute_eligibility_scores(eligibility_df: pd.DataFrame) -> pd.DataFrame:
 
 
 def compute_single_bidder_map(tender_ids: set, all_tender_ids: list) -> dict:
-    return {tid: (tid in tender_ids) for tid in all_tender_ids}
+    return {tender_id: (tender_id in tender_ids) for tender_id in all_tender_ids}
 
 def classify_pattern(
     dept_hhi_label: str,

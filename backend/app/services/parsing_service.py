@@ -1,6 +1,7 @@
 from ..data.base import TenderDataSource
 from ..data.parser.pdf_extractor import parse_tender_document
 from ..data.parser.category_matcher import match_category
+from ..data.in_memory import InMemoryTenderDataSource
 from datetime import datetime
 
 def process_upload(pdf_path: str, source: TenderDataSource) -> int:
@@ -49,3 +50,40 @@ def process_upload(pdf_path: str, source: TenderDataSource) -> int:
     source.insert_bids(tender_id, bids_to_insert)
     
     return tender_id
+
+def process_batch_upload(parsed_documents: list[dict]) -> InMemoryTenderDataSource:
+    """
+    Orchestrates business logic for batch processing: determines batch-local
+    canonical categories, matches them, and constructs an isolated in-memory data source.
+    """
+    canonical_categories = list(set(doc["category"] for doc in parsed_documents))
+    
+    tenders_data = []
+    bids_data = []
+    
+    for doc in parsed_documents:
+        match_result = match_category(doc["category"], canonical_categories)
+        final_category = match_result["matched_category"]
+        
+        tenders_data.append({
+            "tender_id": doc["tender_id"],
+            "department": doc["department"],
+            "category": final_category,
+            "region": doc["region"],
+            "eligibility_text": doc["eligibility_text"],
+            "estimated_value": doc["estimated_value"],
+            "award_value": doc["award_value"],
+            "published_date": doc["published_date"],
+            "award_date": doc["award_date"],
+            "_filename": doc.get("_filename")
+        })
+        
+        for bidder in doc["bidders"]:
+            bids_data.append({
+                "tender_id": doc["tender_id"],
+                "vendor_name": bidder["vendor_name"],
+                "bid_amount": bidder["bid_amount"],
+                "is_winner": bidder["is_winner"]
+            })
+            
+    return InMemoryTenderDataSource(tenders=tenders_data, bids=bids_data)

@@ -1,3 +1,9 @@
+"""
+upload.py — Handles single document ingestion to the persistent PostgreSQL database.
+Validates the uploaded file, invokes the parsing service to extract and persist
+tender/bid records, and returns the generated database tender_id.
+"""
+
 import os
 import tempfile
 import uuid
@@ -14,6 +20,11 @@ MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 async def upload_document(file: UploadFile = File(...), source = Depends(get_data_source)):
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Only PDF files are allowed.")
+        
+    header = await file.read(5)
+    if header != b"%PDF-":
+        raise HTTPException(status_code=400, detail="File is not a valid PDF document.")
+    await file.seek(0)
         
     file_size = 0
     # Safe temporary location

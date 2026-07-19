@@ -5,7 +5,7 @@ already-aggregated result sets cross into Python.
 """
 
 import pandas as pd
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, event
 from typing import List, Dict, Any
 from datetime import date
 
@@ -18,6 +18,13 @@ class PostgresTenderDataSource(TenderDataSource):
             database_url,
             connect_args={"connect_timeout": timeout}
         )
+        
+        # Enforce statement timeout at connection level
+        @event.listens_for(self.engine, "connect")
+        def receive_connect(dbapi_connection, connection_record):
+            cursor = dbapi_connection.cursor()
+            cursor.execute(f"SET statement_timeout = {timeout * 1000}")
+            cursor.close()
 
     def get_department_win_counts(self) -> pd.DataFrame:
         query = """
