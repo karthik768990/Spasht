@@ -31,7 +31,7 @@ class InMemoryTenderDataSource(TenderDataSource):
         if self.bids_df.empty or self.tenders_df.empty:
             return pd.DataFrame(columns=["department", "vendor_id", "win_count"])
             
-        winners = self.bids_df[self.bids_df["is_winner"] == True]
+        winners = self.bids_df[self.bids_df["is_winner"]]
         merged = winners.merge(self.tenders_df, on="tender_id")
         
         counts = merged.groupby(["department", "vendor_id"]).size().reset_index(name="win_count")
@@ -41,7 +41,7 @@ class InMemoryTenderDataSource(TenderDataSource):
         if self.bids_df.empty or self.tenders_df.empty:
             return pd.DataFrame(columns=["category", "vendor_id", "win_count"])
             
-        winners = self.bids_df[self.bids_df["is_winner"] == True]
+        winners = self.bids_df[self.bids_df["is_winner"]]
         merged = winners.merge(self.tenders_df, on="tender_id")
         
         counts = merged.groupby(["category", "vendor_id"]).size().reset_index(name="win_count")
@@ -63,7 +63,7 @@ class InMemoryTenderDataSource(TenderDataSource):
         if self.tenders_df.empty or self.bids_df.empty:
             return pd.DataFrame(columns=["tender_id", "department", "category", "winning_vendor"])
             
-        winners = self.bids_df[self.bids_df["is_winner"] == True]
+        winners = self.bids_df[self.bids_df["is_winner"]]
         merged = self.tenders_df.merge(winners, on="tender_id", how="left")
         merged["winning_vendor"] = merged["vendor_name"]
         return merged[["tender_id", "department", "category", "winning_vendor"]]

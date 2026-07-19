@@ -1,4 +1,3 @@
-import pytest
 import os
 from fastapi.testclient import TestClient
 from app.main import app
@@ -54,7 +53,7 @@ def test_get_tenders_schema_no_risk_score(monkeypatch):
 def test_upload_malicious_filename():
     # FastAPI's UploadFile abstracts the path, but we still ensure the router 
     # saves it safely by asserting a generic test.
-    response = client.post(
+    client.post(
         "/api/upload/",
         files={"file": ("../../../etc/passwd.pdf", b"%PDF-1.4...", "application/pdf")}
     )
@@ -65,7 +64,6 @@ def test_upload_malicious_filename():
 
 def test_sql_injection_is_inert(monkeypatch):
     # Test that a SQL injection payload in eligibility text is treated as plain text
-    import app.services.parsing_service as ps
     import app.data.parser.pdf_extractor as pe
     
     def mock_parse_tender_document(path):

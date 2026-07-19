@@ -1,4 +1,3 @@
-import pytest
 from app.data.parser.category_matcher import match_category
 
 def test_category_matcher():

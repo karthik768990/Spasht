@@ -22,9 +22,10 @@ class PostgresTenderDataSource(TenderDataSource):
         # Enforce statement timeout at connection level
         @event.listens_for(self.engine, "connect")
         def receive_connect(dbapi_connection, connection_record):
-            cursor = dbapi_connection.cursor()
-            cursor.execute(f"SET statement_timeout = {timeout * 1000}")
-            cursor.close()
+            if self.engine.dialect.name == "postgresql":
+                cursor = dbapi_connection.cursor()
+                cursor.execute(f"SET statement_timeout = {timeout * 1000}")
+                cursor.close()
 
     def get_department_win_counts(self) -> pd.DataFrame:
         query = """

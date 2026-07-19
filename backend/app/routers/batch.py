@@ -28,7 +28,6 @@ async def scan_batch(files: List[UploadFile] = File(...)):
         
     parsed_documents = []
     errors = []
-    tender_id_counter = 1
     
     temp_dir = tempfile.gettempdir()
     

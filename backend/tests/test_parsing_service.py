@@ -1,6 +1,5 @@
 import pytest
 import os
-import pandas as pd
 from app.data.postgres_source import PostgresTenderDataSource
 from app.services.parsing_service import process_upload
 from app.services.scoring_service import build_report
@@ -55,7 +54,7 @@ def test_integration_upload_rigged(db_source):
     
     # Upload doc_road_construction_rigged.pdf
     pdf_path = os.path.join(SAMPLE_DOCS_DIR, "doc_road_construction_rigged.pdf")
-    tender_id = process_upload(pdf_path, db_source)
+    process_upload(pdf_path, db_source)
     
     # Get new HHI
     post_report = build_report(db_source)
