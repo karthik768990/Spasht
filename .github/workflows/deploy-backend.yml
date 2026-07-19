@@ -1,0 +1,55 @@
+name: Deploy Backend
+
+on:
+  workflow_run:
+    workflows: ["CI Pipeline"]
+    types:
+      - completed
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Trigger Deploy and Check Health
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    
+    steps:
+      - name: Trigger Render/Railway Deploy Hook
+        run: |
+          if [ -z "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" ]; then
+            echo "RENDER_DEPLOY_HOOK_URL is not set. Please set it in GitHub Secrets."
+            exit 1
+          fi
+          echo "Triggering deploy hook..."
+          curl -s -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+          
+      - name: Wait for Deployment (Polling Health Check)
+        run: |
+          if [ -z "${{ secrets.RENDER_BACKEND_URL }}" ]; then
+            echo "RENDER_BACKEND_URL is not set. Please set it in GitHub Secrets (e.g. https://spasht-api.onrender.com)."
+            exit 1
+          fi
+          
+          HEALTH_URL="${{ secrets.RENDER_BACKEND_URL }}/health"
+          echo "Polling $HEALTH_URL..."
+          
+          # Poll for up to 5 minutes (30 attempts, 10s wait)
+          MAX_RETRIES=30
+          WAIT_SECONDS=10
+          
+          for i in $(seq 1 $MAX_RETRIES); do
+            echo "Attempt $i/$MAX_RETRIES..."
+            STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" || true)
+            
+            if [ "$STATUS_CODE" -eq 200 ]; then
+              echo "Health check passed! The backend is fully up."
+              exit 0
+            fi
+            
+            echo "Health check returned $STATUS_CODE. Waiting $WAIT_SECONDS seconds..."
+            sleep $WAIT_SECONDS
+          done
+          
+          echo "Deployment health check failed to return 200 OK after $((MAX_RETRIES * WAIT_SECONDS)) seconds."
+          exit 1
