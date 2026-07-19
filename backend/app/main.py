@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .routers import tenders, upload
+from .routers import tenders, upload, batch
 
 app = FastAPI(title="Spasht - Tender Red-Flag Detector")
 
@@ -15,6 +15,7 @@ app.add_middleware(
 
 app.include_router(tenders.router, prefix="/api/tenders", tags=["Tenders"])
 app.include_router(upload.router, prefix="/api/upload", tags=["Upload"])
+app.include_router(batch.router, prefix="/api/scan-batch", tags=["Batch"])
 
 @app.get("/health")
 def health_check():

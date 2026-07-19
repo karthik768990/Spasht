@@ -39,10 +39,22 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
-  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
   const [samples, setSamples] = useState([]);
   const [showSamples, setShowSamples] = useState(false);
   const [showReasoning, setShowReasoning] = useState(false);
+
+  // Batch Mode State
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [batchTenders, setBatchTenders] = useState(() => {
+    const saved = sessionStorage.getItem('batchTenders');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [batchSelectedTender, setBatchSelectedTender] = useState(null);
+  const [batchUploading, setBatchUploading] = useState(false);
+
+  useEffect(() => {
+    sessionStorage.setItem('batchTenders', JSON.stringify(batchTenders));
+  }, [batchTenders]);
 
   useEffect(() => {
     if (theme === 'dark') {
@@ -134,6 +146,49 @@ function App() {
     }
   };
 
+  const handleBatchUpload = async (event) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    if (files.length > 25) {
+      alert('Maximum 25 files allowed per batch.');
+      return;
+    }
+
+    const formData = new FormData();
+    for (let i = 0; i < files.length; i++) {
+      if (files[i].type !== 'application/pdf') {
+        alert('Only PDF files are allowed.');
+        return;
+      }
+      formData.append('files', files[i]);
+    }
+
+    setBatchUploading(true);
+    setBatchTenders([]);
+    setBatchSelectedTender(null);
+    setError(null);
+    
+    try {
+      const res = await fetch(`${API_BASE}/scan-batch`, {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Batch upload failed');
+      setBatchTenders(data.results || []);
+    } catch (err) {
+      setError(`Batch Error: ${err.message}`);
+    } finally {
+      setBatchUploading(false);
+    }
+    event.target.value = null;
+  };
+
+  const displayTenders = activeTab === 'dashboard' ? tenders : batchTenders;
+  const displaySelected = activeTab === 'dashboard' ? selectedTender : batchSelectedTender;
+  const setDisplaySelected = activeTab === 'dashboard' ? setSelectedTender : setBatchSelectedTender;
+  const isDisplayLoading = activeTab === 'dashboard' ? loading : batchUploading;
+
   const getReasoningText = (t) => {
     const dh = t.dept_hhi_label;
     const ch = t.category_hhi_label;
@@ -145,75 +200,127 @@ function App() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-sans transition-colors duration-200 motion-reduce:transition-none">
       <header className="bg-white dark:bg-slate-800 shadow-sm border-b border-slate-300 dark:border-slate-700 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-2 text-indigo-900 dark:text-indigo-300">
-            <Logo size={24} />
-            <h1 className="text-xl font-serif font-bold tracking-tight">Spasht | Civic Ledger</h1>
-          </div>
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={toggleTheme} 
-              className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 focus-visible:ring-2 focus-visible:ring-indigo-500 outline-none transition-colors"
-              aria-label="Toggle Theme"
-            >
-              {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
-            </button>
-            
-            {samples.length > 0 && (
-              <div className="relative">
-                <button 
-                  onClick={() => setShowSamples(!showSamples)}
-                  className="bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 min-h-[44px] px-3 sm:px-4 py-2 rounded shadow-sm text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-600 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-slate-800 outline-none transition-colors flex items-center gap-2"
-                  disabled={uploading}
-                >
-                  <span className="hidden sm:inline">Load Sample</span>
-                  <span className="sm:hidden">Sample</span> 
-                  <ChevronDown size={16} />
-                </button>
-                {showSamples && (
-                  <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded shadow-lg z-20 py-1">
-                    {samples.map(s => (
-                      <button 
-                        key={s}
-                        onClick={() => handleSampleUpload(s)}
-                        className="w-full text-left px-4 py-3 min-h-[44px] text-sm text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-slate-700 focus-visible:bg-indigo-50 dark:focus-visible:bg-slate-700 outline-none truncate"
-                        title={s}
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                )}
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2 text-indigo-900 dark:text-indigo-300 shrink-0">
+                <Logo size={24} />
+                <h1 className="text-xl font-serif font-bold tracking-tight">Spasht</h1>
               </div>
-            )}
-            
-            <label className="cursor-pointer bg-indigo-900 hover:bg-indigo-800 dark:bg-indigo-300 dark:hover:bg-indigo-400 dark:text-indigo-950 text-indigo-50 min-h-[44px] px-3 sm:px-4 py-2 rounded shadow-sm text-sm font-medium focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500 dark:focus-within:ring-offset-slate-800 transition-colors flex items-center gap-2">
-              {uploading ? (
+              
+              <nav className="flex gap-1 overflow-x-auto">
+                <button
+                  onClick={() => { setActiveTab('dashboard'); setError(null); }}
+                  className={`whitespace-nowrap px-3 py-1.5 text-sm font-medium rounded-md transition-colors focus-visible:ring-2 focus-visible:ring-indigo-500 outline-none ${activeTab === 'dashboard' ? 'bg-slate-100 dark:bg-slate-700 text-indigo-900 dark:text-indigo-100' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                >
+                  Shared Ledger
+                </button>
+                <button
+                  onClick={() => { setActiveTab('batch'); setError(null); }}
+                  className={`whitespace-nowrap px-3 py-1.5 text-sm font-medium rounded-md transition-colors focus-visible:ring-2 focus-visible:ring-indigo-500 outline-none ${activeTab === 'batch' ? 'bg-slate-100 dark:bg-slate-700 text-indigo-900 dark:text-indigo-100' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                >
+                  Isolated Batch Analysis
+                </button>
+              </nav>
+            </div>
+
+            <div className="flex items-center gap-2 md:gap-4 self-end md:self-auto w-full md:w-auto justify-end">
+              <button 
+                onClick={toggleTheme} 
+                className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 focus-visible:ring-2 focus-visible:ring-indigo-500 outline-none transition-colors shrink-0"
+                aria-label="Toggle Theme"
+              >
+                {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+              </button>
+              
+              {activeTab === 'dashboard' ? (
                 <>
-                  <UploadCloud size={18} className="animate-bounce" /> 
-                  <span className="hidden sm:inline">Scanning...</span>
+                  {samples.length > 0 && (
+                    <div className="relative shrink-0">
+                      <button 
+                        onClick={() => setShowSamples(!showSamples)}
+                        className="bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 min-h-[44px] px-3 sm:px-4 py-2 rounded shadow-sm text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-600 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-slate-800 outline-none transition-colors flex items-center gap-2"
+                        disabled={uploading}
+                      >
+                        <span className="hidden sm:inline">Load Sample</span>
+                        <span className="sm:hidden">Sample</span> 
+                        <ChevronDown size={16} />
+                      </button>
+                      {showSamples && (
+                        <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded shadow-lg z-20 py-1">
+                          {samples.map(s => (
+                            <button 
+                              key={s}
+                              onClick={() => handleSampleUpload(s)}
+                              className="w-full text-left px-4 py-3 min-h-[44px] text-sm text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-slate-700 focus-visible:bg-indigo-50 dark:focus-visible:bg-slate-700 outline-none truncate"
+                              title={s}
+                            >
+                              {s}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  <label className="shrink-0 cursor-pointer bg-indigo-900 hover:bg-indigo-800 dark:bg-indigo-300 dark:hover:bg-indigo-400 dark:text-indigo-950 text-indigo-50 min-h-[44px] px-3 sm:px-4 py-2 rounded shadow-sm text-sm font-medium focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500 dark:focus-within:ring-offset-slate-800 transition-colors flex items-center gap-2">
+                    {uploading ? (
+                      <>
+                        <UploadCloud size={18} className="animate-bounce" /> 
+                        <span className="hidden sm:inline">Scanning...</span>
+                      </>
+                    ) : (
+                      <>
+                        <UploadCloud size={18} /> 
+                        <span className="hidden sm:inline">Scan Award Document</span>
+                        <span className="sm:hidden">Scan</span>
+                      </>
+                    )}
+                    <input type="file" className="hidden" accept=".pdf" onChange={handleFileUpload} disabled={uploading} />
+                  </label>
                 </>
               ) : (
-                <>
-                  <UploadCloud size={18} /> 
-                  <span className="hidden sm:inline">Scan Award Document</span>
-                  <span className="sm:hidden">Scan</span>
-                </>
+                <label className="shrink-0 cursor-pointer bg-indigo-900 hover:bg-indigo-800 dark:bg-indigo-300 dark:hover:bg-indigo-400 dark:text-indigo-950 text-indigo-50 min-h-[44px] px-3 sm:px-4 py-2 rounded shadow-sm text-sm font-medium focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500 dark:focus-within:ring-offset-slate-800 transition-colors flex items-center gap-2">
+                  {batchUploading ? (
+                    <>
+                      <UploadCloud size={18} className="animate-bounce" /> 
+                      <span className="hidden sm:inline">Processing Batch...</span>
+                    </>
+                  ) : (
+                    <>
+                      <UploadCloud size={18} /> 
+                      <span className="hidden sm:inline">Upload Batch (Max 25)</span>
+                      <span className="sm:hidden">Upload Batch</span>
+                    </>
+                  )}
+                  <input type="file" className="hidden" accept=".pdf" multiple onChange={handleBatchUpload} disabled={batchUploading} />
+                </label>
               )}
-              <input type="file" className="hidden" accept=".pdf" onChange={handleFileUpload} disabled={uploading} />
-            </label>
+            </div>
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-8 flex flex-col lg:flex-row gap-6 items-start">
         {/* Left Column: Dashboard List */}
-        <div className={`flex-1 flex flex-col gap-4 ${selectedTender ? 'hidden lg:flex lg:w-3/5 xl:w-2/3' : 'w-full'}`}>
-          <h2 className="text-xl font-serif font-bold text-slate-800 dark:text-slate-200">Public Procurement Records</h2>
+        <div className={`flex-1 flex flex-col gap-4 ${displaySelected ? 'hidden lg:flex lg:w-3/5 xl:w-2/3' : 'w-full'}`}>
+          <h2 className="text-xl font-serif font-bold text-slate-800 dark:text-slate-200">
+            {activeTab === 'dashboard' ? 'Public Procurement Records' : 'Batch Analysis Results'}
+          </h2>
           
+          {activeTab === 'batch' && (
+            <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 p-4 rounded text-sm text-blue-800 dark:text-blue-200 flex items-start gap-3 shadow-sm">
+              <Info size={20} className="shrink-0 mt-0.5 text-blue-600 dark:text-blue-400" />
+              <p>
+                <strong>Isolated Analysis Mode:</strong> Scores shown below are computed <em>strictly relative to this uploaded batch of {displayTenders.length} documents</em>. 
+                They are <strong>not</strong> compared against the full seeded dataset. An extreme concentration score here may simply reflect a small sample size.
+              </p>
+            </div>
+          )}
+
           {error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 p-4 rounded border border-red-200 dark:border-red-800">{error}</div>}
           
-          {loading ? (
+          {isDisplayLoading ? (
             <div className="flex flex-col gap-3 animate-pulse">
               {[1, 2, 3].map(i => (
                 <div key={i} className="h-16 bg-slate-200 dark:bg-slate-800 rounded w-full"></div>
@@ -223,12 +330,12 @@ function App() {
             <>
               {/* Mobile Card Layout */}
               <div className="lg:hidden flex flex-col gap-4">
-                {tenders.map((t) => (
+                {displayTenders.map((t) => (
                   <button 
                     key={t.tender_id} 
-                    onClick={() => { setSelectedTender(t); setShowReasoning(false); }}
+                    onClick={() => { setDisplaySelected(t); setShowReasoning(false); }}
                     className={`w-full text-left p-4 rounded-lg border shadow-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-indigo-500 ${
-                      selectedTender?.tender_id === t.tender_id 
+                      displaySelected?.tender_id === t.tender_id 
                         ? 'bg-indigo-50 dark:bg-slate-700 border-indigo-200 dark:border-indigo-600' 
                         : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-500'
                     }`}
@@ -268,12 +375,14 @@ function App() {
                     </div>
                   </button>
                 ))}
-                {tenders.length === 0 && (
+                {displayTenders.length === 0 && (
                   <div className="bg-white dark:bg-slate-800 rounded border border-slate-300 dark:border-slate-700 p-8 text-center text-slate-500 dark:text-slate-400">
                     <div className="flex flex-col items-center gap-3">
                       <FileText size={32} className="text-slate-300 dark:text-slate-600" />
-                      <p>No procurement records found.</p>
-                      <p className="text-xs">Scan an award document or load a sample to begin analysis.</p>
+                      <p>{activeTab === 'dashboard' ? 'No procurement records found.' : 'No batch results yet.'}</p>
+                      <p className="text-xs">
+                        {activeTab === 'dashboard' ? 'Scan an award document or load a sample to begin analysis.' : 'Upload a batch of up to 25 PDF documents to analyze them together.'}
+                      </p>
                     </div>
                   </div>
                 )}
@@ -291,19 +400,19 @@ function App() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                    {tenders.map((t) => (
+                    {displayTenders.map((t) => (
                       <tr 
                         key={t.tender_id} 
-                        onClick={() => { setSelectedTender(t); setShowReasoning(false); }}
+                        onClick={() => { setDisplaySelected(t); setShowReasoning(false); }}
                         tabIndex={0}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
-                            setSelectedTender(t);
+                            setDisplaySelected(t);
                             setShowReasoning(false);
                           }
                         }}
-                        className={`cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${selectedTender?.tender_id === t.tender_id ? 'bg-indigo-50 dark:bg-slate-700' : ''}`}
+                        className={`cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${displaySelected?.tender_id === t.tender_id ? 'bg-indigo-50 dark:bg-slate-700' : ''}`}
                       >
                         <td className="px-4 py-3 font-mono font-medium text-slate-600 dark:text-slate-400">#{t.tender_id}</td>
                         <td className="px-4 py-3">
@@ -316,13 +425,15 @@ function App() {
                         </td>
                       </tr>
                     ))}
-                    {tenders.length === 0 && (
+                    {displayTenders.length === 0 && (
                       <tr>
                         <td colSpan="4" className="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
                           <div className="flex flex-col items-center gap-3">
                             <FileText size={32} className="text-slate-300 dark:text-slate-600" />
-                            <p>No procurement records found.</p>
-                            <p className="text-xs">Scan an award document or load a sample to begin analysis.</p>
+                            <p>{activeTab === 'dashboard' ? 'No procurement records found.' : 'No batch results yet.'}</p>
+                            <p className="text-xs">
+                              {activeTab === 'dashboard' ? 'Scan an award document or load a sample to begin analysis.' : 'Upload a batch of up to 25 PDF documents to analyze them together.'}
+                            </p>
                           </div>
                         </td>
                       </tr>
@@ -335,14 +446,14 @@ function App() {
         </div>
 
         {/* Right Column: The Evidence Ledger */}
-        {selectedTender && (
+        {displaySelected && (
           <div className="fixed inset-0 z-50 lg:static lg:w-2/5 xl:w-1/3 bg-white dark:bg-slate-800 lg:rounded lg:border border-slate-300 dark:border-slate-700 flex flex-col lg:sticky top-24 shadow-2xl lg:shadow-md transition-all">
             <div className="p-4 border-b border-slate-300 dark:border-slate-700 flex justify-between items-center bg-slate-100 dark:bg-slate-900 lg:rounded-t">
               <h3 className="font-serif font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                Evidence Ledger: <span className="font-mono text-indigo-700 dark:text-indigo-400">#{selectedTender.tender_id}</span>
+                Evidence Ledger: <span className="font-mono text-indigo-700 dark:text-indigo-400">#{displaySelected.tender_id}</span>
               </h3>
               <button 
-                onClick={() => setSelectedTender(null)}
+                onClick={() => setDisplaySelected(null)}
                 className="text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800 p-2 -mr-2 rounded text-sm font-semibold focus-visible:ring-2 focus-visible:ring-indigo-500 outline-none lg:hidden transition-colors"
                 aria-label="Close"
               >
@@ -354,7 +465,7 @@ function App() {
               {/* Top classification banner */}
               <div className="flex flex-col gap-3">
                 <div className="flex justify-between items-center">
-                  <PatternBadge pattern={selectedTender.pattern_classification} className="text-sm py-1.5 px-3" />
+                  <PatternBadge pattern={displaySelected.pattern_classification} className="text-sm py-1.5 px-3" />
                   <button 
                     onClick={() => setShowReasoning(!showReasoning)}
                     className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 focus-visible:ring-2 focus-visible:ring-indigo-500 outline-none rounded p-1 transition-colors"
@@ -366,7 +477,7 @@ function App() {
 
                 {showReasoning && (
                   <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 p-3 rounded text-sm text-indigo-900 dark:text-indigo-200 leading-relaxed shadow-inner">
-                    <strong>Reasoning:</strong> {getReasoningText(selectedTender)}
+                    <strong>Reasoning:</strong> {getReasoningText(displaySelected)}
                   </div>
                 )}
               </div>
@@ -374,14 +485,14 @@ function App() {
               {/* Context */}
               <div className="border-l-2 border-slate-300 dark:border-slate-600 pl-3">
                 <div className="text-sm font-medium text-slate-600 dark:text-slate-400 uppercase tracking-widest mb-1">Context</div>
-                <div className="text-base font-bold text-slate-900 dark:text-slate-100">{selectedTender.department}</div>
-                <div className="text-sm text-slate-700 dark:text-slate-300">{selectedTender.category}</div>
+                <div className="text-base font-bold text-slate-900 dark:text-slate-100">{displaySelected.department}</div>
+                <div className="text-sm text-slate-700 dark:text-slate-300">{displaySelected.category}</div>
                 <div className="mt-2 text-sm">
-                  <span className="text-slate-500 dark:text-slate-400">Awarded to:</span> <span className="font-semibold text-slate-900 dark:text-slate-100">{selectedTender.winning_vendor}</span>
+                  <span className="text-slate-500 dark:text-slate-400">Awarded to:</span> <span className="font-semibold text-slate-900 dark:text-slate-100">{displaySelected.winning_vendor}</span>
                 </div>
               </div>
 
-              {selectedTender.single_bidder_flag && (
+              {displaySelected.single_bidder_flag && (
                 <div className="flex items-start gap-2 text-amber-900 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 p-3 rounded border border-amber-200 dark:border-amber-800 text-sm shadow-sm">
                   <AlertTriangle size={16} className="mt-0.5 shrink-0"/>
                   <span>This tender received <strong>exactly 1 bid</strong>.</span>
@@ -398,11 +509,11 @@ function App() {
                     <h4 className="font-bold text-slate-900 dark:text-slate-100 mb-2 text-sm">Concentration (HHI)</h4>
                     <div className="flex justify-between items-baseline mb-1">
                       <span className="text-xs text-slate-600 dark:text-slate-400">Category:</span>
-                      <span className="font-mono font-bold text-slate-900 dark:text-slate-100 text-base">{selectedTender.category_hhi}</span>
+                      <span className="font-mono font-bold text-slate-900 dark:text-slate-100 text-base">{displaySelected.category_hhi}</span>
                     </div>
                     <div className="flex justify-between items-baseline">
                       <span className="text-xs text-slate-600 dark:text-slate-400">Dept:</span>
-                      <span className="font-mono font-bold text-slate-900 dark:text-slate-100 text-base">{selectedTender.dept_hhi}</span>
+                      <span className="font-mono font-bold text-slate-900 dark:text-slate-100 text-base">{displaySelected.dept_hhi}</span>
                     </div>
                   </div>
 
@@ -411,9 +522,9 @@ function App() {
                     <h4 className="font-bold text-slate-900 dark:text-slate-100 mb-2 text-sm">Deviation Score</h4>
                     <div className="flex justify-between items-baseline flex-1">
                       <span className="text-xs text-slate-600 dark:text-slate-400">Semantic:</span>
-                      {selectedTender.eligibility_deviation_score !== null ? (
+                      {displaySelected.eligibility_deviation_score !== null ? (
                         <span className="font-mono font-bold text-slate-900 dark:text-slate-100 text-base">
-                          {selectedTender.eligibility_deviation_score.toFixed(3)}
+                          {displaySelected.eligibility_deviation_score.toFixed(3)}
                         </span>
                       ) : (
                         <span className="font-mono font-bold text-slate-500 dark:text-slate-500 text-base">N/A</span>
