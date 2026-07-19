@@ -37,6 +37,8 @@ jobs:
         run: black --check . || echo "Black found issues but allowing pipeline to proceed during initial adoption"
         
       - name: Run Tests
+        env:
+          DATABASE_URL: sqlite:///./test.db
         run: pytest 
         
       - name: Security Audit (pip-audit)
@@ -60,7 +62,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: './frontend/package-lock.json'
           
