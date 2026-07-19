@@ -26,9 +26,38 @@ Spasht exposes TWO SEPARATE, never-blended scores per tender.
 
 Spasht uses a decoupled architecture consisting of a FastAPI backend, a React frontend, and a PostgreSQL database (NeonDB), interacting through a pluggable `TenderDataSource` abstraction.
 
-```text
-Upload PDF → Parser → Category Matcher → Data Source → Scoring → API → Frontend
+### Flow 1: Single Document (Insert into shared dataset)
+
+```mermaid
+flowchart TD
+    A[User uploads one tender document] --> B[Job A: pdf_extractor.py<br/>regex-based field extraction]
+    B --> C[Job B: category_matcher.py<br/>embedding similarity vs canonical categories]
+    C --> D{New department<br/>or category?}
+    D -->|Yes| E[Create new department/category/vendor rows]
+    D -->|No| F[Match existing rows]
+    E --> G[(NeonDB / Postgres<br/>departments, vendors, tenders, bids)]
+    F --> G
+    G --> H[PostgresTenderDataSource<br/>SQL aggregation: win-counts, single-bidder detection]
+    H --> I[data/scoring.py<br/>compute_hhi_from_win_counts,<br/>compute_eligibility_scores,<br/>classify_pattern]
+    I --> J[API response: two independent scores<br/>+ pattern classification + reasoning]
+    J --> K[React frontend:<br/>dashboard + tender detail view]
 ```
+
+### Flow 2: Isolated Batch Analysis (In-memory, never persisted)
+
+```mermaid
+flowchart TD
+    A2[User uploads up to 25 documents as one batch] --> B2[Job A: pdf_extractor.py<br/>same extraction logic, reused]
+    B2 --> C2[Job B: category_matcher.py<br/>canonical categories drawn ONLY from this batch]
+    C2 --> D2[InMemoryTenderDataSource<br/>built fresh per-request, no DB writes]
+    D2 --> E2[data/scoring.py<br/>SAME pure scoring functions as Diagram 1]
+    E2 --> F2[API response scoped to this batch only]
+    F2 --> G2[React frontend:<br/>isolated batch-results view<br/>never mixed with main dashboard]
+
+    style D2 fill:#00000000,stroke-dasharray: 5 5
+```
+
+*Note: This path never touches Postgres. Both diagrams reuse the exact same `data/scoring.py` functions — the only thing that differs is which `TenderDataSource` implementation feeds them, which is the payoff of the pluggable-data-source design used throughout this project.*
 
 - **Scalability**: The pluggable data-source interface means connecting a new procurement portal requires writing one new adapter implementing 6 methods, rather than redesigning the entire system. Aggregation happens directly in SQL, meaning query costs scale efficiently with the database engine, not with application server memory. The embedding function (`get_embeddings()`) is a single swappable seam — upgrading the semantic model never requires touching the core scoring logic that consumes it.
 - **Fault Tolerance**: Document extraction fails LOUDLY and explicitly. A missing critical field raises a clear error rather than silently inserting wrong data. This is deliberate because silent mis-extraction is worse than a visible failure in a governance tool. Database writes for a parsed document are strictly validated before insertion via parameterized queries (new department/vendor/category detection is explicit, not accidental).
