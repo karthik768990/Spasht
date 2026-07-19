@@ -49,8 +49,7 @@ async def scan_batch(files: List[UploadFile] = File(...)):
             try:
                 extracted = parse_tender_document(file_path)
                 extracted["_filename"] = file.filename
-                extracted["tender_id"] = tender_id_counter
-                tender_id_counter += 1
+                extracted["tender_id"] = file.filename
                 parsed_documents.append(extracted)
             except PdfExtractionError as e:
                 raise HTTPException(status_code=400, detail=f"Failed to extract document {file.filename}: {str(e)}")

@@ -39,6 +39,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
+  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
   const [samples, setSamples] = useState([]);
   const [showSamples, setShowSamples] = useState(false);
   const [showReasoning, setShowReasoning] = useState(false);
@@ -175,6 +176,8 @@ function App() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || 'Batch upload failed');
+      
+      alert(`Batch analysis complete! Processed ${data.results?.length || 0} documents.`);
       setBatchTenders(data.results || []);
     } catch (err) {
       setError(`Batch Error: ${err.message}`);
@@ -263,7 +266,7 @@ function App() {
                     </div>
                   )}
                   
-                  <label className="shrink-0 cursor-pointer bg-indigo-900 hover:bg-indigo-800 dark:bg-indigo-300 dark:hover:bg-indigo-400 dark:text-indigo-950 text-indigo-50 min-h-[44px] px-3 sm:px-4 py-2 rounded shadow-sm text-sm font-medium focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500 dark:focus-within:ring-offset-slate-800 transition-colors flex items-center gap-2">
+                  <label key="single-upload" className="shrink-0 cursor-pointer bg-indigo-900 hover:bg-indigo-800 dark:bg-indigo-300 dark:hover:bg-indigo-400 dark:text-indigo-950 text-indigo-50 min-h-[44px] px-3 sm:px-4 py-2 rounded shadow-sm text-sm font-medium focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500 dark:focus-within:ring-offset-slate-800 transition-colors flex items-center gap-2">
                     {uploading ? (
                       <>
                         <UploadCloud size={18} className="animate-bounce" /> 
@@ -280,7 +283,7 @@ function App() {
                   </label>
                 </>
               ) : (
-                <label className="shrink-0 cursor-pointer bg-indigo-900 hover:bg-indigo-800 dark:bg-indigo-300 dark:hover:bg-indigo-400 dark:text-indigo-950 text-indigo-50 min-h-[44px] px-3 sm:px-4 py-2 rounded shadow-sm text-sm font-medium focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500 dark:focus-within:ring-offset-slate-800 transition-colors flex items-center gap-2">
+                <label key="batch-upload" className="shrink-0 cursor-pointer bg-indigo-900 hover:bg-indigo-800 dark:bg-indigo-300 dark:hover:bg-indigo-400 dark:text-indigo-950 text-indigo-50 min-h-[44px] px-3 sm:px-4 py-2 rounded shadow-sm text-sm font-medium focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500 dark:focus-within:ring-offset-slate-800 transition-colors flex items-center gap-2">
                   {batchUploading ? (
                     <>
                       <UploadCloud size={18} className="animate-bounce" /> 
