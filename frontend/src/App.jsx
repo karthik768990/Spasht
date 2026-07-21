@@ -121,7 +121,6 @@ function App() {
       }
     }
   };
-  console.alert("Hi this is mani from the user ")
   const fetchSamples = async (isRetry = false) => {
     try {
       const res = await fetch(`${API_BASE}/upload/samples`);
