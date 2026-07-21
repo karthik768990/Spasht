@@ -37,6 +37,7 @@ function App() {
   const [tenders, setTenders] = useState([]);
   const [selectedTender, setSelectedTender] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [backendWakingUp, setBackendWakingUp] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
@@ -68,29 +69,60 @@ function App() {
 
   const toggleTheme = () => setTheme(theme === 'light' ? 'dark' : 'light');
 
-  const fetchTenders = async () => {
-    setLoading(true);
+  const fetchTenders = async (isRetry = false) => {
+    if (!isRetry) {
+      setLoading(true);
+      setBackendWakingUp(false);
+    }
+    setError(null);
+    
+    const wakeUpTimer = setTimeout(() => {
+      setBackendWakingUp(true);
+      setLoading(false);
+    }, 5000);
+
     try {
       const res = await fetch(`${API_BASE}/tenders`);
-      if (!res.ok) throw new Error('Failed to fetch tenders');
+      clearTimeout(wakeUpTimer);
+      if (!res.ok) {
+        if (res.status >= 500) {
+          throw new Error('Server starting up...');
+        }
+        throw new Error('Failed to fetch tenders');
+      }
       const data = await res.json();
       setTenders(data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
+      setBackendWakingUp(false);
       setLoading(false);
+    } catch (err) {
+      clearTimeout(wakeUpTimer);
+      if ((err.name === 'TypeError' && err.message.includes('fetch')) || err.message === 'Server starting up...') {
+        setBackendWakingUp(true);
+        setLoading(false);
+        setTimeout(() => fetchTenders(true), 5000);
+      } else {
+        setError(err.message);
+        setLoading(false);
+        setBackendWakingUp(false);
+      }
     }
   };
 
-  const fetchSamples = async () => {
+  const fetchSamples = async (isRetry = false) => {
     try {
       const res = await fetch(`${API_BASE}/upload/samples`);
       if (res.ok) {
         const data = await res.json();
         setSamples(data.samples || []);
+      } else if (res.status >= 500 && !isRetry) {
+        setTimeout(() => fetchSamples(true), 5000);
       }
     } catch (err) {
-      console.error("Failed to fetch samples", err);
+      if ((err.name === 'TypeError' && err.message.includes('fetch')) && !isRetry) {
+        setTimeout(() => fetchSamples(true), 5000);
+      } else {
+        console.error("Failed to fetch samples", err);
+      }
     }
   };
 
@@ -323,6 +355,15 @@ function App() {
 
           {error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 p-4 rounded border border-red-200 dark:border-red-800">{error}</div>}
           
+          {activeTab === 'dashboard' && backendWakingUp && !error && (
+            <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 p-4 rounded text-sm text-amber-800 dark:text-amber-200 flex items-start gap-3 shadow-sm mb-4">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-amber-600 dark:border-amber-400 shrink-0 mt-0.5"></div>
+              <p>
+                <strong>Backend is waking up:</strong> The server is on a free tier and is currently waking up from sleep. This may take up to a minute. Loading data in the background...
+              </p>
+            </div>
+          )}
+
           {isDisplayLoading ? (
             <div className="flex flex-col gap-3 animate-pulse">
               {[1, 2, 3].map(i => (
@@ -382,9 +423,9 @@ function App() {
                   <div className="bg-white dark:bg-slate-800 rounded border border-slate-300 dark:border-slate-700 p-8 text-center text-slate-500 dark:text-slate-400">
                     <div className="flex flex-col items-center gap-3">
                       <FileText size={32} className="text-slate-300 dark:text-slate-600" />
-                      <p>{activeTab === 'dashboard' ? 'No procurement records found.' : 'No batch results yet.'}</p>
+                      <p>{activeTab === 'dashboard' ? (backendWakingUp ? 'Waiting for backend...' : 'No procurement records found.') : 'No batch results yet.'}</p>
                       <p className="text-xs">
-                        {activeTab === 'dashboard' ? 'Scan an award document or load a sample to begin analysis.' : 'Upload a batch of up to 25 PDF documents to analyze them together.'}
+                        {activeTab === 'dashboard' ? (backendWakingUp ? 'The results will appear here automatically once the server is ready.' : 'Scan an award document or load a sample to begin analysis.') : 'Upload a batch of up to 25 PDF documents to analyze them together.'}
                       </p>
                     </div>
                   </div>
@@ -433,9 +474,9 @@ function App() {
                         <td colSpan="4" className="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
                           <div className="flex flex-col items-center gap-3">
                             <FileText size={32} className="text-slate-300 dark:text-slate-600" />
-                            <p>{activeTab === 'dashboard' ? 'No procurement records found.' : 'No batch results yet.'}</p>
+                            <p>{activeTab === 'dashboard' ? (backendWakingUp ? 'Waiting for backend...' : 'No procurement records found.') : 'No batch results yet.'}</p>
                             <p className="text-xs">
-                              {activeTab === 'dashboard' ? 'Scan an award document or load a sample to begin analysis.' : 'Upload a batch of up to 25 PDF documents to analyze them together.'}
+                              {activeTab === 'dashboard' ? (backendWakingUp ? 'The results will appear here automatically once the server is ready.' : 'Scan an award document or load a sample to begin analysis.') : 'Upload a batch of up to 25 PDF documents to analyze them together.'}
                             </p>
                           </div>
                         </td>
