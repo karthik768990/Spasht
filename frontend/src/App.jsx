@@ -44,6 +44,20 @@ function App() {
   const [samples, setSamples] = useState([]);
   const [showSamples, setShowSamples] = useState(false);
   const [showReasoning, setShowReasoning] = useState(false);
+  const [notification, setNotification] = useState(null);
+
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => {
+        setNotification(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
+
+  const showNotification = (message, type = 'info') => {
+    setNotification({ message, type });
+  };
 
   // Batch Mode State
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -107,7 +121,7 @@ function App() {
       }
     }
   };
-
+  console.alert("Hi this is mani from the user ")
   const fetchSamples = async (isRetry = false) => {
     try {
       const res = await fetch(`${API_BASE}/upload/samples`);
@@ -136,7 +150,7 @@ function App() {
     if (!file) return;
 
     if (file.type !== 'application/pdf') {
-      alert('Only PDF files are allowed.');
+      showNotification('Only PDF files are allowed.', 'error');
       return;
     }
 
@@ -151,10 +165,10 @@ function App() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || 'Upload failed');
-      alert(`Scan complete! Tender ID: ${data.tender_id}`);
+      showNotification(`Scan complete! Tender ID: ${data.tender_id}`, 'success');
       fetchTenders();
     } catch (err) {
-      alert(`Error: ${err.message}`);
+      showNotification(`Error: ${err.message}`, 'error');
     } finally {
       setUploading(false);
     }
@@ -170,10 +184,10 @@ function App() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || 'Sample upload failed');
-      alert(`Sample processed! Tender ID: ${data.tender_id}`);
+      showNotification(`Sample processed! Tender ID: ${data.tender_id}`, 'success');
       fetchTenders();
     } catch (err) {
-      alert(`Error: ${err.message}`);
+      showNotification(`Error: ${err.message}`, 'error');
     } finally {
       setUploading(false);
     }
@@ -183,14 +197,14 @@ function App() {
     const files = event.target.files;
     if (!files || files.length === 0) return;
     if (files.length > 25) {
-      alert('Maximum 25 files allowed per batch.');
+      showNotification('Maximum 25 files allowed per batch.', 'error');
       return;
     }
 
     const formData = new FormData();
     for (let i = 0; i < files.length; i++) {
       if (files[i].type !== 'application/pdf') {
-        alert('Only PDF files are allowed.');
+        showNotification('Only PDF files are allowed.', 'error');
         return;
       }
       formData.append('files', files[i]);
@@ -209,7 +223,7 @@ function App() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || 'Batch upload failed');
       
-      alert(`Batch analysis complete! Processed ${data.results?.length || 0} documents.`);
+      showNotification(`Batch analysis complete! Processed ${data.results?.length || 0} documents.`, 'success');
       setBatchTenders(data.results || []);
     } catch (err) {
       setError(`Batch Error: ${err.message}`);
@@ -588,6 +602,42 @@ function App() {
           </div>
         )}
       </main>
+
+      {/* Notification Toast */}
+      {notification && (
+        <div className={`fixed bottom-4 right-4 max-w-sm w-full shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5 transition-all transform z-50 ${
+          notification.type === 'error' ? 'bg-red-50 dark:bg-red-900 border-l-4 border-red-500' : 
+          notification.type === 'success' ? 'bg-emerald-50 dark:bg-emerald-900 border-l-4 border-emerald-500' :
+          'bg-blue-50 dark:bg-blue-900 border-l-4 border-blue-500'
+        }`}>
+          <div className="flex-1 w-0 p-4">
+            <div className="flex items-start">
+              <div className="flex-shrink-0 pt-0.5">
+                {notification.type === 'error' && <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />}
+                {notification.type === 'success' && <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />}
+                {notification.type === 'info' && <Info className="h-5 w-5 text-blue-600 dark:text-blue-400" />}
+              </div>
+              <div className="ml-3 flex-1">
+                <p className={`text-sm font-medium ${
+                  notification.type === 'error' ? 'text-red-800 dark:text-red-200' : 
+                  notification.type === 'success' ? 'text-emerald-800 dark:text-emerald-200' :
+                  'text-blue-800 dark:text-blue-200'
+                }`}>
+                  {notification.message}
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="flex border-l border-slate-200 dark:border-slate-700">
+            <button
+              onClick={() => setNotification(null)}
+              className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-500 dark:hover:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
