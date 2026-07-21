@@ -7,7 +7,7 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 const PatternBadge = ({ pattern, className = '' }) => {
   let colors = '';
   let Icon = null;
-  
+
   if (!pattern || pattern === 'Insufficient Data') {
     colors = 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700';
     Icon = MinusCircle;
@@ -89,7 +89,7 @@ function App() {
       setBackendWakingUp(false);
     }
     setError(null);
-    
+
     const wakeUpTimer = setTimeout(() => {
       setBackendWakingUp(true);
       setLoading(false);
@@ -214,7 +214,7 @@ function App() {
     setBatchTenders([]);
     setBatchSelectedTender(null);
     setError(null);
-    
+
     try {
       const res = await fetch(`${API_BASE}/scan-batch`, {
         method: 'POST',
@@ -222,7 +222,7 @@ function App() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || 'Batch upload failed');
-      
+
       showNotification(`Batch analysis complete! Processed ${data.results?.length || 0} documents.`, 'success');
       setBatchTenders(data.results || []);
     } catch (err) {
@@ -256,7 +256,7 @@ function App() {
                 <Logo size={24} />
                 <h1 className="text-xl font-serif font-bold tracking-tight">Spasht</h1>
               </div>
-              
+
               <nav className="flex gap-1 overflow-x-auto">
                 <button
                   onClick={() => { setActiveTab('dashboard'); setError(null); }}
@@ -274,31 +274,31 @@ function App() {
             </div>
 
             <div className="flex items-center gap-2 md:gap-4 self-end md:self-auto w-full md:w-auto justify-end">
-              <button 
-                onClick={toggleTheme} 
+              <button
+                onClick={toggleTheme}
                 className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 focus-visible:ring-2 focus-visible:ring-indigo-500 outline-none transition-colors shrink-0"
                 aria-label="Toggle Theme"
               >
                 {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
               </button>
-              
+
               {activeTab === 'dashboard' ? (
                 <>
                   {samples.length > 0 && (
                     <div className="relative shrink-0">
-                      <button 
+                      <button
                         onClick={() => setShowSamples(!showSamples)}
                         className="bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 min-h-[44px] px-3 sm:px-4 py-2 rounded shadow-sm text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-600 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-slate-800 outline-none transition-colors flex items-center gap-2"
                         disabled={uploading}
                       >
                         <span className="hidden sm:inline">Load Sample</span>
-                        <span className="sm:hidden">Sample</span> 
+                        <span className="sm:hidden">Sample</span>
                         <ChevronDown size={16} />
                       </button>
                       {showSamples && (
                         <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded shadow-lg z-20 py-1">
                           {samples.map(s => (
-                            <button 
+                            <button
                               key={s}
                               onClick={() => handleSampleUpload(s)}
                               className="w-full text-left px-4 py-3 min-h-[44px] text-sm text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-slate-700 focus-visible:bg-indigo-50 dark:focus-visible:bg-slate-700 outline-none truncate"
@@ -311,16 +311,16 @@ function App() {
                       )}
                     </div>
                   )}
-                  
+
                   <label key="single-upload" className="shrink-0 cursor-pointer bg-indigo-900 hover:bg-indigo-800 dark:bg-indigo-300 dark:hover:bg-indigo-400 dark:text-indigo-950 text-indigo-50 min-h-[44px] px-3 sm:px-4 py-2 rounded shadow-sm text-sm font-medium focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500 dark:focus-within:ring-offset-slate-800 transition-colors flex items-center gap-2">
                     {uploading ? (
                       <>
-                        <UploadCloud size={18} className="animate-bounce" /> 
+                        <UploadCloud size={18} className="animate-bounce" />
                         <span className="hidden sm:inline">Scanning...</span>
                       </>
                     ) : (
                       <>
-                        <UploadCloud size={18} /> 
+                        <UploadCloud size={18} />
                         <span className="hidden sm:inline">Scan Award Document</span>
                         <span className="sm:hidden">Scan</span>
                       </>
@@ -332,12 +332,12 @@ function App() {
                 <label key="batch-upload" className="shrink-0 cursor-pointer bg-indigo-900 hover:bg-indigo-800 dark:bg-indigo-300 dark:hover:bg-indigo-400 dark:text-indigo-950 text-indigo-50 min-h-[44px] px-3 sm:px-4 py-2 rounded shadow-sm text-sm font-medium focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500 dark:focus-within:ring-offset-slate-800 transition-colors flex items-center gap-2">
                   {batchUploading ? (
                     <>
-                      <UploadCloud size={18} className="animate-bounce" /> 
+                      <UploadCloud size={18} className="animate-bounce" />
                       <span className="hidden sm:inline">Processing Batch...</span>
                     </>
                   ) : (
                     <>
-                      <UploadCloud size={18} /> 
+                      <UploadCloud size={18} />
                       <span className="hidden sm:inline">Upload Batch (Max 25)</span>
                       <span className="sm:hidden">Upload Batch</span>
                     </>
@@ -356,19 +356,19 @@ function App() {
           <h2 className="text-xl font-serif font-bold text-slate-800 dark:text-slate-200">
             {activeTab === 'dashboard' ? 'Public Procurement Records' : 'Batch Analysis Results'}
           </h2>
-          
+
           {activeTab === 'batch' && (
             <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 p-4 rounded text-sm text-blue-800 dark:text-blue-200 flex items-start gap-3 shadow-sm">
               <Info size={20} className="shrink-0 mt-0.5 text-blue-600 dark:text-blue-400" />
               <p>
-                <strong>Isolated Analysis Mode:</strong> Scores shown below are computed <em>strictly relative to this uploaded batch of {displayTenders.length} documents</em>. 
+                <strong>Isolated Analysis Mode:</strong> Scores shown below are computed <em>strictly relative to this uploaded batch of {displayTenders.length} documents</em>.
                 They are <strong>not</strong> compared against the full seeded dataset. An extreme concentration score here may simply reflect a small sample size.
               </p>
             </div>
           )}
 
           {error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 p-4 rounded border border-red-200 dark:border-red-800">{error}</div>}
-          
+
           {activeTab === 'dashboard' && backendWakingUp && !error && (
             <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 p-4 rounded text-sm text-amber-800 dark:text-amber-200 flex items-start gap-3 shadow-sm mb-4">
               <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-amber-600 dark:border-amber-400 shrink-0 mt-0.5"></div>
@@ -389,14 +389,13 @@ function App() {
               {/* Mobile Card Layout */}
               <div className="lg:hidden flex flex-col gap-4">
                 {displayTenders.map((t) => (
-                  <button 
-                    key={t.tender_id} 
+                  <button
+                    key={t.tender_id}
                     onClick={() => { setDisplaySelected(t); setShowReasoning(false); }}
-                    className={`w-full text-left p-4 rounded-lg border shadow-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-indigo-500 ${
-                      displaySelected?.tender_id === t.tender_id 
-                        ? 'bg-indigo-50 dark:bg-slate-700 border-indigo-200 dark:border-indigo-600' 
-                        : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-500'
-                    }`}
+                    className={`w-full text-left p-4 rounded-lg border shadow-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-indigo-500 ${displaySelected?.tender_id === t.tender_id
+                      ? 'bg-indigo-50 dark:bg-slate-700 border-indigo-200 dark:border-indigo-600'
+                      : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-500'
+                      }`}
                   >
                     <div className="flex justify-between items-start mb-2">
                       <div>
@@ -459,8 +458,8 @@ function App() {
                   </thead>
                   <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                     {displayTenders.map((t) => (
-                      <tr 
-                        key={t.tender_id} 
+                      <tr
+                        key={t.tender_id}
                         onClick={() => { setDisplaySelected(t); setShowReasoning(false); }}
                         tabIndex={0}
                         onKeyDown={(e) => {
@@ -510,7 +509,7 @@ function App() {
               <h3 className="font-serif font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                 Evidence Ledger: <span className="font-mono text-indigo-700 dark:text-indigo-400">#{displaySelected.tender_id}</span>
               </h3>
-              <button 
+              <button
                 onClick={() => setDisplaySelected(null)}
                 className="text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800 p-2 -mr-2 rounded text-sm font-semibold focus-visible:ring-2 focus-visible:ring-indigo-500 outline-none lg:hidden transition-colors"
                 aria-label="Close"
@@ -518,13 +517,13 @@ function App() {
                 Close
               </button>
             </div>
-            
+
             <div className="p-5 flex flex-col gap-6 overflow-y-auto flex-1 lg:max-h-[calc(100vh-140px)]">
               {/* Top classification banner */}
               <div className="flex flex-col gap-3">
                 <div className="flex justify-between items-center">
                   <PatternBadge pattern={displaySelected.pattern_classification} className="text-sm py-1.5 px-3" />
-                  <button 
+                  <button
                     onClick={() => setShowReasoning(!showReasoning)}
                     className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 focus-visible:ring-2 focus-visible:ring-indigo-500 outline-none rounded p-1 transition-colors"
                     aria-label="Toggle Reasoning"
@@ -552,7 +551,7 @@ function App() {
 
               {displaySelected.single_bidder_flag && (
                 <div className="flex items-start gap-2 text-amber-900 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 p-3 rounded border border-amber-200 dark:border-amber-800 text-sm shadow-sm">
-                  <AlertTriangle size={16} className="mt-0.5 shrink-0"/>
+                  <AlertTriangle size={16} className="mt-0.5 shrink-0" />
                   <span>This tender received <strong>exactly 1 bid</strong>.</span>
                 </div>
               )}
@@ -560,7 +559,7 @@ function App() {
               {/* TRANSPARENCY REQUIREMENT: Strictly separated score displays side-by-side or stacked cleanly */}
               <div className="flex flex-col gap-4">
                 <div className="text-sm font-medium text-slate-600 dark:text-slate-400 uppercase tracking-widest border-b border-slate-200 dark:border-slate-700 pb-1">Raw Evidence</div>
-                
+
                 <div className="flex flex-col sm:flex-row gap-4">
                   {/* Score 1: Concentration (HHI) */}
                   <div className="flex-1 p-3 rounded border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/50 shadow-sm">
@@ -591,7 +590,7 @@ function App() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
                 <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
                   <strong>Notice:</strong> These signals are derived strictly from computational comparisons and are for investigative prioritization only. They do not constitute proof of wrongdoing.
@@ -605,11 +604,10 @@ function App() {
 
       {/* Notification Toast */}
       {notification && (
-        <div className={`fixed bottom-4 right-4 max-w-sm w-full shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5 transition-all transform z-50 ${
-          notification.type === 'error' ? 'bg-red-50 dark:bg-red-900 border-l-4 border-red-500' : 
+        <div className={`fixed bottom-4 right-4 max-w-sm w-full shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5 transition-all transform z-50 ${notification.type === 'error' ? 'bg-red-50 dark:bg-red-900 border-l-4 border-red-500' :
           notification.type === 'success' ? 'bg-emerald-50 dark:bg-emerald-900 border-l-4 border-emerald-500' :
-          'bg-blue-50 dark:bg-blue-900 border-l-4 border-blue-500'
-        }`}>
+            'bg-blue-50 dark:bg-blue-900 border-l-4 border-blue-500'
+          }`}>
           <div className="flex-1 w-0 p-4">
             <div className="flex items-start">
               <div className="flex-shrink-0 pt-0.5">
@@ -618,11 +616,10 @@ function App() {
                 {notification.type === 'info' && <Info className="h-5 w-5 text-blue-600 dark:text-blue-400" />}
               </div>
               <div className="ml-3 flex-1">
-                <p className={`text-sm font-medium ${
-                  notification.type === 'error' ? 'text-red-800 dark:text-red-200' : 
+                <p className={`text-sm font-medium ${notification.type === 'error' ? 'text-red-800 dark:text-red-200' :
                   notification.type === 'success' ? 'text-emerald-800 dark:text-emerald-200' :
-                  'text-blue-800 dark:text-blue-200'
-                }`}>
+                    'text-blue-800 dark:text-blue-200'
+                  }`}>
                   {notification.message}
                 </p>
               </div>
