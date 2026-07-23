@@ -4,19 +4,16 @@ Parses documents in memory and computes relative scores purely within the
 batch boundary, without touching the PostgreSQL dataset.
 """
 
-import os
-import tempfile
-import uuid
 import json
 from typing import List
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from ..services.parsing_service import process_batch_upload
 from ..data.parser.pdf_extractor import parse_tender_document, PdfExtractionError
 from ..services.scoring_service import build_report
+from ..services.file_service import validate_pdf_header, save_upload_to_disk, cleanup_file
 
 router = APIRouter()
 
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 MAX_FILES = 25
 
 @router.post("")
@@ -29,45 +26,39 @@ async def scan_batch(files: List[UploadFile] = File(...)):
     parsed_documents = []
     errors = []
     
-    temp_dir = tempfile.gettempdir()
-    
     for file in files:
         if file.content_type != "application/pdf":
             errors.append({"filename": file.filename, "error": "Not a PDF file."})
             continue
             
-        header = await file.read(5)
-        if header != b"%PDF-":
+        try:
+            await validate_pdf_header(file)
+        except HTTPException:
             errors.append({"filename": file.filename, "error": "Invalid PDF magic bytes."})
             continue
-        await file.seek(0)
             
-        file_size = 0
-        safe_filename = f"{uuid.uuid4()}.pdf"
-        file_path = os.path.join(temp_dir, safe_filename)
-        
         try:
-            with open(file_path, "wb") as f_out:
-                while chunk := await file.read(1024 * 1024):  # 1MB chunks
-                    file_size += len(chunk)
-                    if file_size > MAX_FILE_SIZE:
-                        raise HTTPException(status_code=400, detail=f"File {file.filename} exceeds the 10MB limit.")
-                    f_out.write(chunk)
+            file_path = await save_upload_to_disk(file, file_identifier=file.filename)
+        except HTTPException as e:
+            errors.append({"filename": file.filename, "error": e.detail})
+            continue
+        
+        # Parse document
+        try:
+            extracted = parse_tender_document(file_path)
+            extracted["_filename"] = file.filename
+            extracted["tender_id"] = file.filename
+            parsed_documents.append(extracted)
             
-            # Parse document
-            try:
-                extracted = parse_tender_document(file_path)
-                extracted["_filename"] = file.filename
-                extracted["tender_id"] = file.filename
-                parsed_documents.append(extracted)
-            except PdfExtractionError as e:
-                errors.append({"filename": file.filename, "error": str(e)})
-            except Exception as e:
-                print(f"Server Error during processing {file.filename}: {e}")
-                errors.append({"filename": file.filename, "error": "Internal server error during parsing."})
-        finally:
-            if os.path.exists(file_path):
-                os.remove(file_path)
+            # Safe to remove file ONLY on successful completion
+            cleanup_file(file_path)
+            
+        except PdfExtractionError as e:
+            errors.append({"filename": file.filename, "error": str(e)})
+            print(f"Failed to extract {file.filename}. Preserved at: {file_path}")
+        except Exception as e:
+            print(f"Server Error during processing {file.filename}: {e}. Preserved at: {file_path}")
+            errors.append({"filename": file.filename, "error": "Internal server error during parsing."})
                 
     if not parsed_documents:
         raise HTTPException(

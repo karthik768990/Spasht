@@ -5,56 +5,37 @@ tender/bid records, and returns the generated database tender_id.
 """
 
 import os
-import tempfile
-import uuid
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from ..deps import get_data_source
 from ..services.parsing_service import process_upload
 from ..data.parser.pdf_extractor import PdfExtractionError
+from ..services.file_service import validate_pdf_header, save_upload_to_disk, cleanup_file
 
 router = APIRouter()
-
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
 @router.post("/")
 async def upload_document(file: UploadFile = File(...), source = Depends(get_data_source)):
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Only PDF files are allowed.")
         
-    header = await file.read(5)
-    if header != b"%PDF-":
-        raise HTTPException(status_code=400, detail="File is not a valid PDF document.")
-    await file.seek(0)
-        
-    file_size = 0
-    # Safe temporary location
-    temp_dir = tempfile.gettempdir()
-    safe_filename = f"{uuid.uuid4()}.pdf"
-    file_path = os.path.join(temp_dir, safe_filename)
+    await validate_pdf_header(file)
+    
+    file_path = await save_upload_to_disk(file)
     
     try:
-        with open(file_path, "wb") as f:
-            while chunk := await file.read(1024 * 1024):  # 1MB chunks
-                file_size += len(chunk)
-                if file_size > MAX_FILE_SIZE:
-                    raise HTTPException(status_code=400, detail="File size exceeds the 10MB limit.")
-                f.write(chunk)
-                
-        # Parse and insert
-        try:
-            tender_id = process_upload(file_path, source)
-        except PdfExtractionError as e:
-            raise HTTPException(status_code=400, detail=f"Failed to extract document: {str(e)}")
-        except Exception as e:
-            # Mask raw database exceptions in API response
-            print(f"Server Error during processing: {e}")
-            raise HTTPException(status_code=500, detail="An internal server error occurred while processing the document.")
-            
+        tender_id = process_upload(file_path, source)
+        
+        # Safe to remove file ONLY on successful completion
+        cleanup_file(file_path)
+        
         return {"message": "Document uploaded successfully", "tender_id": tender_id}
         
-    finally:
-        if os.path.exists(file_path):
-            os.remove(file_path)
+    except PdfExtractionError as e:
+        # We do not delete the file here so it can be debugged
+        raise HTTPException(status_code=400, detail=f"Failed to extract document: {str(e)}")
+    except Exception as e:
+        print(f"Server Error during processing: {e}. Preserved failed document at: {file_path}")
+        raise HTTPException(status_code=500, detail="An internal server error occurred while processing the document.")
 
 @router.get("/samples")
 def list_sample_documents():

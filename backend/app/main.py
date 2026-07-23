@@ -1,9 +1,31 @@
 import os
+import asyncio
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .routers import tenders, upload, batch
+from .services.file_service import cleanup_old_pdfs
 
-app = FastAPI(title="Spasht - Tender Red-Flag Detector")
+async def cleanup_task():
+    """Background task to periodically clean up abandoned PDF files."""
+    while True:
+        try:
+            # Run the synchronous file IO function in a thread to prevent blocking
+            await asyncio.to_thread(cleanup_old_pdfs, 1.0)
+        except Exception as e:
+            print(f"Error in cleanup task: {e}")
+        # Run every 1 hour
+        await asyncio.sleep(3600)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Start the background cleanup task
+    task = asyncio.create_task(cleanup_task())
+    yield
+    # Shutdown: Cancel the task
+    task.cancel()
+
+app = FastAPI(title="Spasht - Tender Red-Flag Detector", lifespan=lifespan)
 
 # Get allowed origin from environment variable, fallback to local dev URLs
 allowed_origin = os.environ.get("CORS_ALLOWED_ORIGIN")

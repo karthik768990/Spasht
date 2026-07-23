@@ -27,8 +27,6 @@ def match_category(
             "is_new_category": bool,   # True if below threshold
         }
 
-    No side effects, no DB access — pure function, same principle as the
-    scoring functions: takes exactly the arguments it needs and nothing else.
     """
     if not extracted_category or not extracted_category.strip():
         # Empty or malformed category fails gracefully rather than hitting the embedder
@@ -75,9 +73,7 @@ def match_category(
 
 
 if __name__ == "__main__":
-    # Manual check — deliberately includes both an exact match AND a
-    # phrasing variant, so you can see the TF-IDF limitation described
-    # above for yourself rather than take the warning on faith.
+
     canonical = [
         "IT Hardware", "Road Construction", "Medical Supplies",
         "Pipeline Maintenance", "School Furniture",
